@@ -8,6 +8,10 @@ use App\Models\Peminjaman;
 use App\Models\Laptop;  // Ganti Tool dengan Laptop
 use Illuminate\Http\Request;
 
+// user : yani@gmail.com
+// pw : 123456789
+// atau register
+
 class DashboardController extends Controller
 {
     public function index()

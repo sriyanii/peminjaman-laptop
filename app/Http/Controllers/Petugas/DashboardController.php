@@ -12,6 +12,9 @@
  * @since 1.0.0
  */
 
+//  user : admin@gmail.com
+//  pw : 12345678
+
 namespace App\Http\Controllers\Petugas;
 
 use App\Http\Controllers\Controller;
