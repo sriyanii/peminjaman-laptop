@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Peminjaman Laptop</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #3a86ff;
+            --secondary: #2667cc;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --sidebar-bg: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+            color: var(--dark);
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+        }
+        
+        /* SIDEBAR */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: var(--sidebar-bg);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar.active { transform: translateX(0); }
+        
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); }
+        }
+        
+        .sidebar-brand {
+            padding: 20px 25px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar-brand i {
+            font-size: 40px;
+            color: white;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .sidebar-brand h3 {
+            color: white;
+            font-weight: 600;
+            margin: 0;
+            font-size: 22px;
+        }
+        
+        .sidebar-nav-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 0;
+        }
+        
+        .menu-section {
+            margin-bottom: 25px;
+            padding: 0 15px;
+        }
+        
+        .menu-section-title {
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .nav { padding: 0 10px; }
+        .nav-item { margin-bottom: 5px; }
+        
+        .nav-link {
+            color: rgba(255,255,255,0.85) !important;
+            padding: 12px 15px !important;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .nav-link i {
+            width: 24px;
+            margin-right: 12px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.15);
+            color: white !important;
+            transform: translateX(5px);
+        }
+        
+        .nav-link.active {
+            background: white !important;
+            color: var(--primary) !important;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-footer {
+            padding: 20px 25px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.1);
+            color: rgba(255,255,255,0.6);
+            font-size: 12px;
+        }
+        
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        
+        @media (max-width: 992px) {
+            .main-content { margin-left: 0; width: 100%; }
+        }
+        
+        .content-container {
+            padding: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .header h2 {
+            color: var(--dark);
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .header h2 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .role-badge {
+            background: var(--primary);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            min-height: 500px;
+        }
+        
+        /* STATS CARD */
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .stats-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-number {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 10px 0;
+            color: var(--dark);
+        }
+        
+        .stats-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        /* MOBILE TOGGLE */
+        #sidebarToggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1001;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 992px) {
+            #sidebarToggle { display: flex; }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 260px; }
+            .content-container { padding: 15px; }
+            .header { padding: 15px 20px; }
+            .content { padding: 20px; }
+            .stats-number { font-size: 24px; }
+        }
+    </style>
+    
+    </head>
+<body>
+            <div class="login-page w-100">
+            <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    body {
+        min-height: 100vh;
+        background-image: url('http://127.0.0.1:8000/images/login.png');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }
+
+    .login-container {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        padding: 30px 35px;
+        width: 360px;
+        background-color: rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(5px);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-header {
+        text-align: center;
+        color: white;
+        margin-bottom: 35px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #3498db;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 28px;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-subtitle {
+        text-align: center;
+        color: white; /* Diubah menjadi putih */
+        margin-bottom: 25px;
+        font-size: 14px;
+        font-weight: 400;
+        opacity: 0.95;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        display: block;
+        color: white; /* Diubah menjadi putih */
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 15px;
+        border: none;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-bottom: 2px solid #3498db;
+        color: white;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+    }
+
+    .form-input:focus {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-bottom: 2px solid #64b5f6;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .form-input::placeholder {
+        color: rgba(255, 255, 255, 0.7); /* Diperjelas sedikit */
+        font-size: 14px;
+    }
+
+    .login-button {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        background-color: #3498db;
+        font-size: 16px;
+        color: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .login-button:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .login-button:active {
+        transform: translateY(0);
+    }
+
+    .login-links {
+        text-align: center;
+        color: white;
+        font-size: 14px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .login-links a {
+        color: white; /* Diubah menjadi putih */
+        text-decoration: none;
+        transition: color 0.3s ease;
+        font-weight: 500;
+        opacity: 0.9;
+    }
+
+    .login-links a:hover {
+        color: #3498db;
+        text-decoration: underline;
+        opacity: 1;
+    }
+
+    .error-message {
+        color: #ff6b6b;
+        font-size: 12px;
+        margin-top: 5px;
+        background: rgba(255, 107, 107, 0.15);
+        padding: 5px 10px;
+        border-radius: 4px;
+        border-left: 3px solid #ff6b6b;
+    }
+
+    .success-message {
+        color: white;
+        font-size: 14px;
+        text-align: center;
+        background: rgba(46, 204, 113, 0.8);
+        padding: 12px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border-left: 3px solid #2ecc71;
+        backdrop-filter: blur(5px);
+        font-weight: 500;
+    }
+
+    @media (max-width: 480px) {
+        .login-container {
+            width: 90%;
+            padding: 25px 20px;
+        }
+        
+        .login-header {
+            font-size: 24px;
+        }
+        
+        .login-subtitle {
+            font-size: 13px;
+        }
+    }
+</style>
+
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="login-container">
+    <h1 class="login-header">LOGIN</h1>
+    
+    <p class="login-subtitle">Sistem Peminjaman Laptop</p>
+    
+        
+    <form method="POST" action="http://127.0.0.1:8000/login">
+        <input type="hidden" name="_token" value="VcA07eHMijUn99SMBvxLbPP9C7516mvskCjTQh2E" autocomplete="off">        
+        <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <input 
+                id="email" 
+                type="email" 
+                class="form-input " 
+                name="email" 
+                value="" 
+                required 
+                autofocus
+                placeholder="email@example.com"
+            >
+                    </div>
+        
+        <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input 
+                id="password" 
+                type="password" 
+                class="form-input " 
+                name="password" 
+                required 
+                placeholder="••••••••"
+            >
+                    </div>
+        
+        <button type="submit" class="login-button">
+            Login
+        </button>
+    </form>
+    
+    <div class="login-links">
+                    <a href="http://127.0.0.1:8000/forgot-password">Lupa Password?</a>
+                <div style="margin-top: 10px;">
+            <span style="color: rgba(255, 255, 255, 0.9);">Belum punya akun? </span>
+            <a href="http://127.0.0.1:8000/register">Daftar di sini</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Add focus effect for inputs
+    document.querySelectorAll('.form-input').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.style.borderBottom = '2px solid #64b5f6';
+            this.style.boxShadow = '0 2px 5px rgba(100, 181, 246, 0.3)';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.style.borderBottom = '2px solid #3498db';
+            this.style.boxShadow = 'none';
+        });
+    });
+    
+    // Add loading state to button
+    const loginForm = document.querySelector('form');
+    const loginButton = document.querySelector('.login-button');
+    
+    if (loginForm && loginButton) {
+        loginForm.addEventListener('submit', function() {
+            loginButton.innerHTML = 'Loading...';
+            loginButton.disabled = true;
+            loginButton.style.opacity = '0.8';
+            loginButton.style.background = '#2980b9';
+        });
+    }
+</script>
+        </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.getElementById('sidebarToggle')?.addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+            const icon = this.querySelector('i');
+            icon.className = sidebar.classList.contains('active') ? 'fas fa-times' : 'fas fa-bars';
+        });
+        
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) {
+                    document.getElementById('sidebar').classList.remove('active');
+                    document.getElementById('sidebarToggle').querySelector('i').className = 'fas fa-bars';
+                }
+            });
+        });
+    </script>
+    
+    </body>
+</html>

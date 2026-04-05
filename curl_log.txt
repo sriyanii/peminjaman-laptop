@@ -1,0 +1,24 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 127.0.0.1:8000...
+* Connected to 127.0.0.1 (127.0.0.1) port 8000
+> GET /login HTTP/1.1
+> Host: 127.0.0.1:8000
+> User-Agent: curl/8.5.0
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Host: 127.0.0.1:8000
+< Connection: close
+< X-Powered-By: PHP/8.4.1
+< Content-Type: text/html; charset=utf-8
+< Cache-Control: no-cache, private
+< Date: Tue, 10 Mar 2026 13:59:20 GMT
+* Added cookie XSRF-TOKEN="eyJpdiI6IjdSTWVaT0NnanBjbnNHc1ZqTS9vZUE9PSIsInZhbHVlIjoiQWdLa0F4a1Y1bFNKMTlhQmoxQVQyeENOblRHR1VtcWZiUkJuZVkrZS9hSDI2UlUzeEsvRUYxblczUFYzZnczTHRSMW45Zi9QR0F0NllZUTFOSFNMcDZDWXRiUytlOHRFanNtKy82UGpsdnpOL3VQcyt0S3BLYjZrOStocWF3dW4iLCJtYWMiOiJkODA3NzcyOTI5ZGZkYmI3ZGZmMWE0ZDIzY2Q2NjAxNGEyOTk0NGI0ZmNmMzk0YTU1MDMwMDgxODVhNDliYWI5IiwidGFnIjoiIn0%3D" for domain 127.0.0.1, path /, expire 1773158360
+< Set-Cookie: XSRF-TOKEN=eyJpdiI6IjdSTWVaT0NnanBjbnNHc1ZqTS9vZUE9PSIsInZhbHVlIjoiQWdLa0F4a1Y1bFNKMTlhQmoxQVQyeENOblRHR1VtcWZiUkJuZVkrZS9hSDI2UlUzeEsvRUYxblczUFYzZnczTHRSMW45Zi9QR0F0NllZUTFOSFNMcDZDWXRiUytlOHRFanNtKy82UGpsdnpOL3VQcyt0S3BLYjZrOStocWF3dW4iLCJtYWMiOiJkODA3NzcyOTI5ZGZkYmI3ZGZmMWE0ZDIzY2Q2NjAxNGEyOTk0NGI0ZmNmMzk0YTU1MDMwMDgxODVhNDliYWI5IiwidGFnIjoiIn0%3D; expires=Tue, 10 Mar 2026 15:59:20 GMT; Max-Age=7200; path=/; samesite=lax
+* Added cookie sistem-peminjaman-laptop-session="eyJpdiI6IjRsOEJ5YTNRRTQ1dzlPWDAveUp2OXc9PSIsInZhbHVlIjoiQmYzaXNHaTJaaEo3NXFvZ1VFRFFwZnpuQm83UjJtc3pqcWpYSTAxdnMzSWpQaGh2eEhrVjZpN0ZWNTIySTM0VXRSOFYwNTRRTXIrOVFrMVJ4cEFOWVJDWit1R21ra1dqcG9hcW1WVmpuaGxITXNTQmwwMEFZWFIvT0wramJyY28iLCJtYWMiOiIyNmJiMjY4MWJjNGQ5M2E1ZDVlY2E2YTVlOWI1ZTk2ODRjNDE3YzViNThhZDU2YTYxYmUxMjdhY2JlMDgwZmFlIiwidGFnIjoiIn0%3D" for domain 127.0.0.1, path /, expire 1773158360
+< Set-Cookie: sistem-peminjaman-laptop-session=eyJpdiI6IjRsOEJ5YTNRRTQ1dzlPWDAveUp2OXc9PSIsInZhbHVlIjoiQmYzaXNHaTJaaEo3NXFvZ1VFRFFwZnpuQm83UjJtc3pqcWpYSTAxdnMzSWpQaGh2eEhrVjZpN0ZWNTIySTM0VXRSOFYwNTRRTXIrOVFrMVJ4cEFOWVJDWit1R21ra1dqcG9hcW1WVmpuaGxITXNTQmwwMEFZWFIvT0wramJyY28iLCJtYWMiOiIyNmJiMjY4MWJjNGQ5M2E1ZDVlY2E2YTVlOWI1ZTk2ODRjNDE3YzViNThhZDU2YTYxYmUxMjdhY2JlMDgwZmFlIiwidGFnIjoiIn0%3D; expires=Tue, 10 Mar 2026 15:59:20 GMT; Max-Age=7200; path=/; httponly; samesite=lax
+< 
+{ [16018 bytes data]
+100 16018    0 16018    0     0  68393      0 --:--:-- --:--:-- --:--:-- 68161100 16018    0 16018    0     0  67902      0 --:--:-- --:--:-- --:--:-- 67872
+* Closing connection

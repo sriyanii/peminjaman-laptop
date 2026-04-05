@@ -1,0 +1,408 @@
+@extends('layouts.app')
+
+@section('content')
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Open Sans', sans-serif;
+    }
+
+    body {
+        min-height: 100vh;
+        background-image: url('{{ asset("images/login.png") }}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .page-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        min-height: calc(100vh - 40px);
+    }
+
+    .register-container {
+        max-width: 420px;
+        width: 100%;
+        padding: 25px 30px;
+        background-color: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        margin: auto;
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .register-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .register-container {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
+    .register-header {
+        text-align: center;
+        color: white;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #3498db;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 24px;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .register-subtitle {
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
+        font-size: 13px;
+        font-weight: 400;
+        opacity: 0.95;
+        line-height: 1.4;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        display: block;
+        color: white;
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: none;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-bottom: 2px solid #3498db;
+        color: white;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        border-radius: 4px;
+    }
+
+    .form-input:focus {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-bottom: 2px solid #64b5f6;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .form-input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 13px;
+    }
+
+    .register-button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        background-color: #3498db;
+        font-size: 15px;
+        color: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-top: 5px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .register-button:hover {
+        background-color: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .register-button:active {
+        transform: translateY(0);
+    }
+
+    .login-links {
+        text-align: center;
+        color: white;
+        font-size: 13px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .login-links a {
+        color: white;
+        text-decoration: none;
+        transition: color 0.3s ease;
+        font-weight: 500;
+        opacity: 0.9;
+        font-size: 14px;
+    }
+
+    .login-links a:hover {
+        color: #3498db;
+        text-decoration: underline;
+        opacity: 1;
+    }
+
+    .error-message {
+        color: #ff6b6b;
+        font-size: 11px;
+        margin-top: 4px;
+        background: rgba(255, 107, 107, 0.15);
+        padding: 4px 8px;
+        border-radius: 4px;
+        border-left: 3px solid #ff6b6b;
+        line-height: 1.3;
+    }
+
+    .success-message {
+        color: white;
+        font-size: 13px;
+        text-align: center;
+        background: rgba(46, 204, 113, 0.8);
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        border-left: 3px solid #2ecc71;
+        backdrop-filter: blur(5px);
+        font-weight: 500;
+        line-height: 1.4;
+    }
+
+    /* Responsive adjustments */
+    @media (max-height: 700px) {
+        .register-container {
+            padding: 20px 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-input {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+        
+        .register-button {
+            padding: 10px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        body {
+            padding: 10px;
+            align-items: center; /* Pastikan tetap center */
+            min-height: 100vh;
+            height: auto;
+        }
+        
+        .page-wrapper {
+            min-height: calc(100vh - 20px);
+        }
+        
+        .register-container {
+            width: 100%;
+            max-width: 100%;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .register-header {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+        
+        .register-subtitle {
+            font-size: 12px;
+            margin-bottom: 18px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .register-container {
+            padding: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-input {
+            padding: 7px 9px;
+            font-size: 12px;
+        }
+        
+        .register-button {
+            padding: 9px;
+            font-size: 13px;
+        }
+    }
+</style>
+
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="page-wrapper">
+    <div class="register-container">
+        <h1 class="register-header">REGISTER</h1>
+        
+        <p class="register-subtitle">Daftar Akun Baru</p>
+        
+        @if(session('success'))
+            <div class="success-message">
+                {{ session('success') }}
+            </div>
+        @endif
+        
+        <form method="POST" action="{{ route('register') }}">
+            @csrf
+
+            <div class="form-group">
+                <label for="name" class="form-label">Nama</label>
+                <input 
+                    id="name" 
+                    type="text" 
+                    class="form-input @error('name') error @enderror" 
+                    name="name" 
+                    value="{{ old('name') }}" 
+                    required 
+                    autocomplete="name" 
+                    autofocus
+                    placeholder="Masukkan nama lengkap"
+                >
+                @error('name')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email</label>
+                <input 
+                    id="email" 
+                    type="email" 
+                    class="form-input @error('email') error @enderror" 
+                    name="email" 
+                    value="{{ old('email') }}" 
+                    required 
+                    autocomplete="email"
+                    placeholder="email@example.com"
+                >
+                @error('email')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input 
+                    id="password" 
+                    type="password" 
+                    class="form-input @error('password') error @enderror" 
+                    name="password" 
+                    required 
+                    autocomplete="new-password"
+                    placeholder="••••••••"
+                >
+                @error('password')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="password-confirm" class="form-label">Konfirmasi Password</label>
+                <input 
+                    id="password-confirm" 
+                    type="password" 
+                    class="form-input" 
+                    name="password_confirmation" 
+                    required 
+                    autocomplete="new-password"
+                    placeholder="••••••••"
+                >
+            </div>
+
+            <button type="submit" class="register-button">
+                Register
+            </button>
+        </form>
+        
+        <div class="login-links">
+            <p style="margin-bottom: 8px; color: rgba(255, 255, 255, 0.9); font-size: 13px;">
+                Sudah punya akun?
+            </p>
+            <a href="{{ route('login') }}">Login di sini</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Add focus effect for inputs
+    document.querySelectorAll('.form-input').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.style.borderBottom = '2px solid #64b5f6';
+            this.style.boxShadow = '0 2px 5px rgba(100, 181, 246, 0.3)';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.style.borderBottom = '2px solid #3498db';
+            this.style.boxShadow = 'none';
+        });
+    });
+    
+    // Add loading state to button
+    const registerForm = document.querySelector('form');
+    const registerButton = document.querySelector('.register-button');
+    
+    if (registerForm && registerButton) {
+        registerForm.addEventListener('submit', function() {
+            registerButton.innerHTML = 'Loading...';
+            registerButton.disabled = true;
+            registerButton.style.opacity = '0.8';
+            registerButton.style.background = '#2980b9';
+        });
+    }
+    
+    // Function to center form vertically
+    function centerForm() {
+        const pageWrapper = document.querySelector('.page-wrapper');
+        const container = document.querySelector('.register-container');
+        const windowHeight = window.innerHeight;
+        const containerHeight = container.offsetHeight;
+        
+        // Jika form lebih tinggi dari viewport, tetap di atas
+        if (containerHeight > windowHeight - 40) {
+            pageWrapper.style.alignItems = 'flex-start';
+            pageWrapper.style.paddingTop = '20px';
+        } else {
+            pageWrapper.style.alignItems = 'center';
+            pageWrapper.style.paddingTop = '0';
+        }
+    }
+    
+    // Initial adjustment
+    centerForm();
+    
+    // Adjust on resize
+    window.addEventListener('resize', centerForm);
+</script>
+@endsection
