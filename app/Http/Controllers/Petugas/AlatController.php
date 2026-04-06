@@ -17,6 +17,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Laptop;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse; 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 
@@ -45,45 +46,57 @@ class AlatController extends Controller
      * @example
      * GET /petugas/alat?search=asus&status=tersedia
      */
-    public function index(Request $request): View
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
-        // Inisialisasi query untuk laptop
-        $query = Laptop::query();
-        
-        // Filter berdasarkan pencarian teks
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('merk', 'like', '%' . $search . '%')
-                  ->orWhere('model', 'like', '%' . $search . '%')
-                  ->orWhere('processor', 'like', '%' . $search . '%')
-                  ->orWhere('serial_number', 'like', '%' . $search . '%');
-            });
-        }
-        
-        // Filter berdasarkan status laptop
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        
-        // Statistik ringkasan untuk dashboard petugas
-        $statistics = [
-            'total_tools' => Laptop::count(),
-            'available_tools' => Laptop::where('status', 'tersedia')->count(),
-            'borrowed_tools' => Laptop::where('status', 'dipinjam')->count(),
-            'maintenance_tools' => Laptop::whereIn('status', ['rusak', 'maintenance'])->count(),
-        ];
-        
-        // Ambil data dengan urutan terbaru dan pagination 10 item per halaman
-        $laptops = $query->orderBy('created_at', 'desc')->paginate(10);
-        
-        return view('petugas.alat.index', compact('laptops', 'statistics'));
+/**
+ * Menampilkan daftar laptop dengan filter dan statistik (untuk petugas).
+ */
+public function index(Request $request): View
+{
+    // Otorisasi: Hanya petugas yang dapat mengakses
+    if (auth()->user()->role !== 'petugas') {
+        abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
     }
+
+    // Inisialisasi query untuk laptop
+    $query = Laptop::query();
+    
+    // Filter berdasarkan pencarian teks
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('merk', 'like', '%' . $search . '%')
+              ->orWhere('model', 'like', '%' . $search . '%')
+              ->orWhere('processor', 'like', '%' . $search . '%')
+              ->orWhere('serial_number', 'like', '%' . $search . '%');
+        });
+    }
+    
+    // Filter berdasarkan status laptop
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+    
+    // TAMBAHKAN: Filter berdasarkan kondisi laptop (baik, rusak_ringan, rusak_berat)
+    if ($request->filled('kondisi')) {
+        $query->where('kondisi', $request->kondisi);
+    }
+    
+    // Statistik ringkasan untuk dashboard petugas
+    $statistics = [
+        'total_tools' => Laptop::count(),
+        'available_tools' => Laptop::where('status', 'tersedia')->count(),
+        'borrowed_tools' => Laptop::where('status', 'dipinjam')->count(),
+        'maintenance_tools' => Laptop::whereIn('status', ['rusak', 'maintenance'])->count(),
+        // TAMBAHKAN: Statistik berdasarkan kondisi
+        'good_condition' => Laptop::where('kondisi', 'baik')->count(),
+        'light_damage' => Laptop::where('kondisi', 'rusak_ringan')->count(),
+        'heavy_damage' => Laptop::where('kondisi', 'rusak_berat')->count(),
+    ];
+    
+    // Ambil data dengan urutan terbaru dan pagination 10 item per halaman
+    $laptops = $query->orderBy('created_at', 'desc')->paginate(10);
+    
+    return view('petugas.alat.index', compact('laptops', 'statistics'));
+}
 
     /**
      * Menampilkan form untuk membuat laptop baru (petugas).
@@ -435,5 +448,18 @@ class AlatController extends Controller
         // Contoh menggunakan library Excel atau CSV
         
         return back()->with('info', 'Fitur export akan segera tersedia.');
+    }
+
+        /**
+     * Get laptop detail via AJAX for petugas
+     */
+    public function getDetail($id): JsonResponse
+    {
+        try {
+            $laptop = Laptop::findOrFail($id);
+            return response()->json($laptop);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Data tidak ditemukan'], 404);
+        }
     }
 }

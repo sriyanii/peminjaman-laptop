@@ -1,5 +1,5 @@
 <?php
-// app/Models/TransaksiDenda.php
+// app/Models/Denda.php
 
 namespace App\Models;
 
@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class TransaksiDenda extends Model
+class Denda extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -39,28 +39,16 @@ class TransaksiDenda extends Model
 
     public function peminjaman()
     {
-        return $this->belongsTo(Peminjaman::class, 'peminjaman_id');
+        return $this->belongsTo(Peminjaman::class);
     }
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
     public function petugas()
     {
         return $this->belongsTo(User::class, 'petugas_id');
-    }
-    
-    // Hitung sisa denda
-    public function getSisaDendaAttribute()
-    {
-        return max(0, $this->total_denda - $this->denda_dibayar);
-    }
-    
-    // Cek apakah sudah lunas
-    public function getIsLunasAttribute()
-    {
-        return $this->status_pembayaran == 'lunas';
     }
 }

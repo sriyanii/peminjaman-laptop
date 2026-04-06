@@ -35,10 +35,18 @@ class CategoryController extends Controller
      */
     public function index(Request $request): View
     {
-        // Ambil semua kategori dengan urutan terbaru, pagination 10 data per halaman
-        $categories = Category::latest()->paginate(10);
-        
-        return view('admin.categories.index', compact('categories'));
+    $query = Category::query();
+    
+    // Filter pencarian
+    if ($request->filled('search')) {
+        $query->where('name', 'like', '%' . $request->search . '%')
+              ->orWhere('slug', 'like', '%' . $request->search . '%');
+    }
+    
+    $categories = $query->paginate(10);
+    
+    // Jangan gunakan withCount('laptops') jika kolom category_id tidak ada
+    return view('admin.categories.index', compact('categories'));
     }
 
     /**
@@ -98,16 +106,12 @@ class CategoryController extends Controller
     {
         // Ambil data kategori dengan jumlah laptop terkait
         // dan ambil 5 laptop terbaru dari kategori ini
-        $category = Category::withCount('laptops')  // Ganti 'tools' dengan 'laptops'
-            ->with(['laptops' => function($query) {  // Ganti 'tools' dengan 'laptops'
-                $query->limit(5)->orderBy('nama_laptop');  // Ganti 'nama_alat' dengan 'nama_laptop'
-            }])
-            ->findOrFail($id);
-        
-        return view('admin.categories.form', [
-            'mode' => 'show',
-            'category' => $category
-        ]);
+   $category = Category::findOrFail($id);
+    
+    return view('admin.categories.form', [
+        'mode' => 'show',
+        'category' => $category
+    ]);
     }
 
     /**

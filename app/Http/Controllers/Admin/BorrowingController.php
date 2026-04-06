@@ -1,13 +1,12 @@
 <?php
+
 /**
  * Borrowing Controller (Admin)
  * 
  * Controller ini bertanggung jawab untuk mengelola semua operasi terkait peminjaman laptop
- * di sisi administrator, termasuk menampilkan, membuat, mengupdate, menyetujui, dan menolak peminjaman.
+ * di sisi administrator, termasuk menampilkan, mengupdate, menyetujui, dan menolak peminjaman.
  * 
  * @package App\Http\Controllers\Admin
- * @author Your Name
- * @since 1.0.0
  */
 
 namespace App\Http\Controllers\Admin;
@@ -16,26 +15,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Borrowing;
 use App\Models\User;
 use App\Models\Laptop;
+use App\Models\TransaksiDenda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 class BorrowingController extends Controller
 {
     /**
      * Menampilkan daftar semua peminjaman dengan filter pencarian dan status.
-     * 
-     * Method ini menampilkan data peminjaman yang dapat difilter berdasarkan:
-     * - Pencarian berdasarkan nama user, email, atau detail laptop
-     * - Status peminjaman (pending, approved, returned, etc)
-     * Data ditampilkan dalam bentuk pagination 15 item per halaman.
-     * 
-     * @param Request $request Objek request yang berisi parameter filter (search, status)
-     * @return View View daftar peminjaman dengan data borrowings
-     * 
-     * @example
-     * GET /admin/borrowings?search=john&status=approved
      */
     public function index(Request $request): View
     {
@@ -46,12 +36,10 @@ class BorrowingController extends Controller
         if ($request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                // Pencarian berdasarkan data user
                 $q->whereHas('user', function($userQuery) use ($search) {
                     $userQuery->where('name', 'like', "%{$search}%")
                               ->orWhere('email', 'like', "%{$search}%");
                 })
-                // Pencarian berdasarkan data laptop
                 ->orWhereHas('laptop', function($laptopQuery) use ($search) {
                     $laptopQuery->where('merk', 'like', "%{$search}%")
                                 ->orWhere('model', 'like', "%{$search}%")
@@ -65,109 +53,45 @@ class BorrowingController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter berdasarkan rentang tanggal
+        if ($request->has('tanggal_mulai') && $request->tanggal_mulai) {
+            $query->whereDate('tanggal_pinjam', '>=', $request->tanggal_mulai);
+        }
+
+        if ($request->has('tanggal_selesai') && $request->tanggal_selesai) {
+            $query->whereDate('tanggal_pinjam', '<=', $request->tanggal_selesai);
+        }
+
+        // Filter berdasarkan nama/email peminjam
+        if ($request->has('peminjam') && $request->peminjam) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->peminjam . '%')
+                  ->orWhere('email', 'like', '%' . $request->peminjam . '%');
+            });
+        }
+
         // Ambil data dengan urutan terbaru dan pagination
         $borrowings = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        return view('admin.borrowings.index', compact('borrowings'));
-    }
+        // Statistik untuk dashboard admin
+        $statistics = [
+            'total' => Borrowing::count(),
+            'pending' => Borrowing::where('status', 'pending')->count(),
+            'active' => Borrowing::where('status', 'aktif')->count(),
+            'returned' => Borrowing::where('status', 'selesai')->count(),
+            'approved' => Borrowing::where('status', 'approved')->count(),
+            'rejected' => Borrowing::where('status', 'ditolak')->count(),
+            'cancelled' => Borrowing::where('status', 'batal')->count(),
+        ];
 
-    /**
-     * Menampilkan form untuk membuat peminjaman baru.
-     * 
-     * Method ini menyiapkan data yang diperlukan untuk form peminjaman:
-     * - Daftar user dengan role 'user' yang diurutkan berdasarkan nama
-     * - Daftar laptop yang tersedia (status 'tersedia') untuk dipinjam
-     * 
-     * @return View View form peminjaman dengan data users dan laptops
-     */
-    public function create(): View
-    {
-        // Ambil semua user dengan role 'user'
-        $users = User::where('role', 'user')->orderBy('name')->get();
-        
-        // Ambil semua laptop yang tersedia untuk dipinjam
-        $laptops = Laptop::where('status', 'tersedia')
-            ->orderBy('merk')
-            ->orderBy('model')
-            ->get();
-
-        return view('admin.borrowings.form', compact('users', 'laptops'));
-    }
-
-    /**
-     * Menyimpan data peminjaman baru ke database.
-     * 
-     * Method ini melakukan validasi data, mengecek ketersediaan laptop,
-     * mengupdate status laptop menjadi 'dipinjam', dan membuat record peminjaman baru.
-     * Semua operasi dilakukan dalam transaksi database untuk menjaga konsistensi data.
-     * 
-     * @param Request $request Objek request yang berisi data peminjaman
-     * @return RedirectResponse Redirect ke halaman daftar peminjaman dengan pesan sukses/error
-     * 
-     * @throws \Exception Jika laptop tidak tersedia
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        // Validasi data input
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'laptop_id' => 'required|exists:laptops,id',
-            'tanggal_pinjam' => 'required|date',
-            'tanggal_kembali_rencana' => 'required|date|after:tanggal_pinjam',
-            'tujuan' => 'required|in:meeting,presentasi,training,work_from_home,proyek,lainnya',
-            'keterangan' => 'nullable|string|max:500',
-        ]);
-
-        try {
-            // Memulai transaksi database
-            DB::beginTransaction();
-
-            // Cek ketersediaan laptop
-            $laptop = Laptop::where('id', $validated['laptop_id'])
-                ->where('status', 'tersedia')
-                ->first();
-
-            if (!$laptop) {
-                throw new \Exception('Laptop tidak tersedia.');
-            }
-
-            // Update status laptop menjadi dipinjam
-            $laptop->update(['status' => 'dipinjam']);
-
-            // Buat record peminjaman baru dengan status approved
-            $borrowing = Borrowing::create(array_merge($validated, [
-                'status' => 'approved',
-                'approved_by' => auth()->id(),
-                'waktu_approve' => now(),
-            ]));
-
-            // Commit transaksi jika semua operasi berhasil
-            DB::commit();
-
-            return redirect()->route('admin.borrowings.index')
-                ->with('success', 'Peminjaman berhasil dibuat dan disetujui.');
-
-        } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
-            DB::rollBack();
-            return back()->with('error', 'Gagal: ' . $e->getMessage())->withInput();
-        }
+        return view('admin.borrowings.index', compact('borrowings', 'statistics'));
     }
 
     /**
      * Menampilkan detail peminjaman berdasarkan ID.
-     * 
-     * Method ini menampilkan informasi lengkap peminjaman beserta relasi
-     * user, laptop, dan approver (admin yang menyetujui).
-     * 
-     * @param int|string $id ID peminjaman yang akan ditampilkan
-     * @return View View detail peminjaman dengan data borrowing
-     * 
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
      */
     public function show($id): View
     {
-        // Ambil data peminjaman dengan relasi yang diperlukan
         $borrowing = Borrowing::with(['user', 'laptop', 'approver'])
             ->findOrFail($id);
 
@@ -176,51 +100,23 @@ class BorrowingController extends Controller
 
     /**
      * Menampilkan form edit peminjaman.
-     * 
-     * Method ini menampilkan form untuk mengedit data peminjaman yang sudah ada.
-     * Data user dan laptop ditampilkan untuk dipilih kembali.
-     * 
-     * @param int|string $id ID peminjaman yang akan diedit
-     * @return View View form peminjaman dengan data borrowing, users, dan laptops
-     * 
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
      */
     public function edit($id): View
     {
-        // Ambil data peminjaman yang akan diedit
         $borrowing = Borrowing::findOrFail($id);
-        
-        // Ambil semua user dengan role 'user'
         $users = User::where('role', 'user')->orderBy('name')->get();
-        
-        // Ambil semua laptop (termasuk yang sedang dipinjam)
-        $laptops = Laptop::orderBy('merk')
-            ->orderBy('model')
-            ->get();
+        $laptops = Laptop::orderBy('merk')->orderBy('model')->get();
 
         return view('admin.borrowings.form', compact('borrowing', 'users', 'laptops'));
     }
 
     /**
      * Mengupdate data peminjaman yang sudah ada.
-     * 
-     * Method ini melakukan update data peminjaman dengan penanganan khusus
-     * jika terjadi perubahan laptop yang dipinjam. Status laptop lama akan
-     * dikembalikan menjadi 'tersedia' dan laptop baru akan diupdate menjadi 'dipinjam'.
-     * Operasi dilakukan dalam transaksi database.
-     * 
-     * @param Request $request Objek request yang berisi data peminjaman yang diupdate
-     * @param int|string $id ID peminjaman yang akan diupdate
-     * @return RedirectResponse Redirect ke halaman daftar peminjaman dengan pesan sukses/error
-     * 
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
      */
     public function update(Request $request, $id): RedirectResponse
     {
-        // Ambil data peminjaman yang akan diupdate
         $borrowing = Borrowing::findOrFail($id);
 
-        // Validasi data input
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'laptop_id' => 'required|exists:laptops,id',
@@ -231,35 +127,33 @@ class BorrowingController extends Controller
         ]);
 
         try {
-            // Memulai transaksi database
             DB::beginTransaction();
 
             // Jika laptop yang dipinjam berubah
             if ($borrowing->laptop_id != $validated['laptop_id']) {
                 // Kembalikan status laptop lama menjadi tersedia
                 $oldLaptop = Laptop::find($borrowing->laptop_id);
-                if ($oldLaptop) {
+                if ($oldLaptop && $oldLaptop->status == 'dipinjam') {
                     $oldLaptop->update(['status' => 'tersedia']);
                 }
 
                 // Update status laptop baru menjadi dipinjam
                 $newLaptop = Laptop::find($validated['laptop_id']);
-                if ($newLaptop) {
+                if ($newLaptop && $newLaptop->status == 'tersedia') {
                     $newLaptop->update(['status' => 'dipinjam']);
+                } else {
+                    throw new \Exception('Laptop baru tidak tersedia.');
                 }
             }
 
-            // Update data peminjaman
             $borrowing->update($validated);
 
-            // Commit transaksi
             DB::commit();
 
             return redirect()->route('admin.borrowings.index')
                 ->with('success', 'Peminjaman berhasil diperbarui.');
 
         } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
             DB::rollBack();
             return back()->with('error', 'Gagal: ' . $e->getMessage())->withInput();
         }
@@ -267,50 +161,37 @@ class BorrowingController extends Controller
 
     /**
      * Menyetujui peminjaman yang masih pending.
-     * 
-     * Method ini mengubah status peminjaman dari 'pending' menjadi 'approved',
-     * mengupdate status laptop menjadi 'dipinjam', dan mencatat admin yang menyetujui
-     * beserta waktu persetujuan. Operasi dilakukan dalam transaksi database.
-     * 
-     * @param int|string $id ID peminjaman yang akan disetujui
-     * @return RedirectResponse Redirect kembali ke halaman sebelumnya dengan pesan sukses/error
-     * 
-     * @throws \Exception Jika status peminjaman bukan 'pending'
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
      */
     public function approve($id): RedirectResponse
     {
         try {
-            // Memulai transaksi database
             DB::beginTransaction();
 
-            // Ambil data peminjaman dengan relasi laptop
             $borrowing = Borrowing::with('laptop')->findOrFail($id);
 
-            // Validasi status peminjaman
             if ($borrowing->status !== 'pending') {
                 throw new \Exception('Status peminjaman tidak valid untuk disetujui.');
             }
 
-            // Update status laptop menjadi dipinjam
+            if ($borrowing->laptop && $borrowing->laptop->status != 'tersedia') {
+                throw new \Exception('Laptop tidak tersedia untuk dipinjam.');
+            }
+
             if ($borrowing->laptop) {
                 $borrowing->laptop->update(['status' => 'dipinjam']);
             }
 
-            // Update status peminjaman menjadi approved
             $borrowing->update([
                 'status' => 'approved',
                 'approved_by' => auth()->id(),
                 'waktu_approve' => now(),
             ]);
 
-            // Commit transaksi
             DB::commit();
 
             return redirect()->back()->with('success', 'Peminjaman disetujui.');
 
         } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
             DB::rollBack();
             return back()->with('error', 'Gagal: ' . $e->getMessage());
         }
@@ -318,49 +199,259 @@ class BorrowingController extends Controller
 
     /**
      * Menolak peminjaman yang masih pending.
-     * 
-     * Method ini mengubah status peminjaman menjadi 'ditolak' dan
-     * mencatat alasan penolakan yang diberikan oleh admin.
-     * 
-     * @param Request $request Objek request yang berisi alasan penolakan
-     * @param int|string $id ID peminjaman yang akan ditolak
-     * @return RedirectResponse Redirect kembali ke halaman sebelumnya dengan pesan sukses/error
-     * 
-     * @throws \Exception Jika status peminjaman bukan 'pending'
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
      */
     public function reject(Request $request, $id): RedirectResponse
     {
-        // Validasi alasan penolakan
         $request->validate([
             'alasan_ditolak' => 'required|string|max:500',
         ]);
 
         try {
-            // Memulai transaksi database
             DB::beginTransaction();
 
-            // Ambil data peminjaman
             $borrowing = Borrowing::findOrFail($id);
 
-            // Validasi status peminjaman
             if ($borrowing->status !== 'pending') {
                 throw new \Exception('Status peminjaman tidak valid untuk ditolak.');
             }
 
-            // Update status peminjaman menjadi ditolak dengan alasan
             $borrowing->update([
                 'status' => 'ditolak',
                 'alasan_ditolak' => $request->alasan_ditolak,
+                'approved_by' => auth()->id(),
             ]);
 
-            // Commit transaksi
             DB::commit();
 
             return redirect()->back()->with('success', 'Peminjaman ditolak.');
 
         } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
+            DB::rollBack();
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menghapus data peminjaman.
+     */
+    public function destroy($id): RedirectResponse
+    {
+        try {
+            DB::beginTransaction();
+            
+            $borrowing = Borrowing::with('laptop')->findOrFail($id);
+            
+            $transaksiDenda = TransaksiDenda::where('peminjaman_id', $id)->first();
+            if ($transaksiDenda && $transaksiDenda->status_pembayaran != 'lunas') {
+                throw new \Exception('Tidak dapat menghapus peminjaman yang memiliki denda belum lunas.');
+            }
+            
+            if (in_array($borrowing->status, ['approved', 'aktif']) && !$borrowing->tanggal_kembali) {
+                if ($borrowing->laptop) {
+                    $borrowing->laptop->update(['status' => 'tersedia']);
+                }
+            }
+            
+            if ($transaksiDenda) {
+                $transaksiDenda->delete();
+            }
+            
+            $borrowing->delete();
+            
+            DB::commit();
+            
+            return redirect()->route('admin.borrowings.index')
+                ->with('success', 'Data peminjaman berhasil dihapus.');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus peminjaman: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Update status peminjaman (untuk approve/reject via modal)
+     */
+    public function updateStatus(Request $request, $id): RedirectResponse
+    {
+        $request->validate([
+            'status' => 'required|in:approved,ditolak,selesai,batal',
+            'catatan' => 'nullable|string|max:500',
+            'alasan_ditolak' => 'required_if:status,ditolak|nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            $borrowing = Borrowing::with('laptop')->findOrFail($id);
+            $newStatus = $request->status;
+            
+            if ($newStatus == 'approved') {
+                if ($borrowing->status !== 'pending') {
+                    throw new \Exception('Status peminjaman tidak valid untuk disetujui.');
+                }
+                
+                if ($borrowing->laptop && $borrowing->laptop->status != 'tersedia') {
+                    throw new \Exception('Laptop tidak tersedia untuk dipinjam.');
+                }
+                
+                if ($borrowing->laptop) {
+                    $borrowing->laptop->update(['status' => 'dipinjam']);
+                }
+                
+                $borrowing->update([
+                    'status' => 'approved',
+                    'approved_by' => auth()->id(),
+                    'waktu_approve' => now(),
+                ]);
+                
+                $message = 'Peminjaman berhasil disetujui.';
+                
+            } elseif ($newStatus == 'ditolak') {
+                if ($borrowing->status !== 'pending') {
+                    throw new \Exception('Status peminjaman tidak valid untuk ditolak.');
+                }
+                
+                $borrowing->update([
+                    'status' => 'ditolak',
+                    'alasan_ditolak' => $request->alasan_ditolak,
+                    'approved_by' => auth()->id(),
+                ]);
+                
+                $message = 'Peminjaman ditolak.';
+                
+            } else {
+                throw new \Exception('Status tidak valid.');
+            }
+            
+            DB::commit();
+            
+            return redirect()->route('admin.borrowings.index')->with('success', $message);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get borrowing code for AJAX (untuk modal approve/reject)
+     */
+    public function getKodePeminjaman($id): JsonResponse
+    {
+        $borrowing = Borrowing::findOrFail($id);
+        $kode = $borrowing->kode_peminjaman ?? 'PINJ-' . date('Ymd', strtotime($borrowing->created_at)) . '-' . str_pad($borrowing->id, 4, '0', STR_PAD_LEFT);
+        
+        return response()->json(['kode' => $kode]);
+    }
+
+/**
+ * Get borrowing detail for AJAX (untuk modal show)
+ */
+public function getDetail($id): JsonResponse
+{
+    try {
+        $borrowing = Borrowing::with(['user', 'laptop'])->findOrFail($id);
+        
+        $data = [
+            'success' => true,
+            'data' => [
+                'id' => $borrowing->id,
+                'kode_peminjaman' => $borrowing->kode_peminjaman ?? 'PINJ-' . date('Ymd', strtotime($borrowing->created_at)) . '-' . str_pad($borrowing->id, 4, '0', STR_PAD_LEFT),
+                'status' => $borrowing->status,
+                'tanggal_pinjam' => $borrowing->tanggal_pinjam,
+                'tanggal_kembali_rencana' => $borrowing->tanggal_kembali_rencana,
+                'tanggal_kembali' => $borrowing->tanggal_kembali,
+                'tujuan' => $borrowing->tujuan,
+                'keterangan' => $borrowing->keterangan,
+                'denda' => $borrowing->denda,
+                'user' => $borrowing->user ? [
+                    'name' => $borrowing->user->name,
+                    'email' => $borrowing->user->email,
+                    'phone' => $borrowing->user->phone ?? '-',
+                    'nim' => $borrowing->user->nim ?? '-',
+                ] : null,
+                'laptop' => $borrowing->laptop ? [
+                    'merk' => $borrowing->laptop->merk,
+                    'model' => $borrowing->laptop->model,
+                    'serial_number' => $borrowing->laptop->serial_number,
+                    'kode_alat' => $borrowing->laptop->kode_alat ?? '-',
+                    'kondisi' => $borrowing->laptop->kondisi ?? '-',
+                ] : null,
+            ]
+        ];
+        
+        return response()->json($data);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Data tidak ditemukan: ' . $e->getMessage()
+        ], 404);
+    }
+}
+
+    /**
+     * Process return of laptop
+     */
+    public function return(Request $request, $id): RedirectResponse
+    {
+        $request->validate([
+            'tanggal_kembali' => 'required|date',
+            'kondisi' => 'required|in:baik,rusak_ringan,rusak_berat',
+            'catatan' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            
+            $borrowing = Borrowing::with('laptop')->findOrFail($id);
+            
+            if (!in_array($borrowing->status, ['approved', 'aktif'])) {
+                throw new \Exception('Peminjaman tidak sedang aktif.');
+            }
+            
+            if ($borrowing->tanggal_kembali) {
+                throw new \Exception('Laptop sudah dikembalikan.');
+            }
+            
+            // Hitung denda jika terlambat
+            $denda = 0;
+            $tanggalRencana = \Carbon\Carbon::parse($borrowing->tanggal_kembali_rencana);
+            $tanggalKembali = \Carbon\Carbon::parse($request->tanggal_kembali);
+            
+            if ($tanggalKembali->gt($tanggalRencana)) {
+                $hariTerlambat = $tanggalKembali->diffInDays($tanggalRencana);
+                $hargaSewa = $borrowing->laptop->harga_sewa_harian ?? 50000;
+                $denda = $hariTerlambat * $hargaSewa;
+            }
+            
+            // Update peminjaman
+            $borrowing->update([
+                'status' => 'selesai',
+                'tanggal_kembali' => $request->tanggal_kembali,
+                'catatan_pengembalian' => $request->catatan,
+                'denda' => $denda,
+            ]);
+            
+            // Update laptop
+            if ($borrowing->laptop) {
+                $borrowing->laptop->update([
+                    'status' => 'tersedia',
+                    'kondisi' => $request->kondisi,
+                ]);
+            }
+            
+            DB::commit();
+            
+            $message = 'Laptop berhasil dikembalikan.';
+            if ($denda > 0) {
+                $message .= ' Denda: Rp ' . number_format($denda, 0, ',', '.');
+            }
+            
+            return redirect()->route('admin.borrowings.index')->with('success', $message);
+            
+        } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal: ' . $e->getMessage());
         }

@@ -37,6 +37,15 @@ class Category extends Model
         return 'id'; // Pastikan ini 'id', bukan 'kode_kategori' atau yang lain
     }
 
+        /**
+     * Relasi ke tabel laptops
+     * Sebuah kategori bisa memiliki banyak laptop
+     */
+    public function laptops()
+    {
+        return $this->hasMany(Laptop::class, 'category_id', 'id');
+    }
+
     /**
      * Get the tools for the category.
      */

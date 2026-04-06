@@ -399,9 +399,7 @@
                     <a href="{{ route('petugas.peminjaman.index', ['status' => 'pending']) }}" class="btn btn-outline-warning">
                         <i class="fas fa-clock me-2"></i>Setujui Peminjaman
                     </a>
-                    <a href="{{ route('petugas.pengembalian.index') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-undo me-2"></i>Proses Pengembalian
-                    </a>
+
                     <a href="{{ route('petugas.peminjaman.create') }}" class="btn btn-outline-success">
                         <i class="fas fa-plus me-2"></i>Peminjaman Baru
                     </a>

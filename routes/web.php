@@ -9,10 +9,8 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\ConfirmPasswordController;
 use App\Http\Controllers\Auth\VerificationController;
 
-
 use App\Http\Controllers\Petugas\TransaksiDendaController;
-use App\Http\Controllers\Petugas\PengembalianController;
-
+use App\Http\Controllers\Petugas\PeminjamanController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
@@ -54,7 +52,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-
     /*
     |--------------------------------------------------------------------------
     | EMAIL VERIFICATION
@@ -71,7 +68,6 @@ Route::middleware('auth')->group(function () {
 
     });
 
-
     /*
     |--------------------------------------------------------------------------
     | CONFIRM PASSWORD
@@ -81,7 +77,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/password/confirm', [ConfirmPasswordController::class, 'showConfirmForm'])->name('password.confirm');
     Route::post('/password/confirm', [ConfirmPasswordController::class, 'confirm']);
 
-
     /*
     |--------------------------------------------------------------------------
     | ADMIN ROUTES
@@ -89,51 +84,40 @@ Route::middleware('auth')->group(function () {
     */
 
     Route::middleware('admin')
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
 
-        Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'adminDashboard'])->name('dashboard');
+            Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'adminDashboard'])->name('dashboard');
 
-        Route::resource('users', App\Http\Controllers\UserController::class);
-        Route::resource('laptops', App\Http\Controllers\Admin\LaptopController::class);
-        Route::resource('categories', App\Http\Controllers\Admin\CategoryController::class);
+            Route::resource('users', App\Http\Controllers\UserController::class);
+            Route::resource('categories', App\Http\Controllers\Admin\CategoryController::class);
+            
+            Route::resource('laptops', App\Http\Controllers\Admin\LaptopController::class);
+            Route::get('/laptops/{id}/detail', [App\Http\Controllers\Admin\LaptopController::class, 'getDetail'])->name('laptops.detail');
 
-        /*
-        | Borrowings
-        */
+            Route::resource('borrowings', App\Http\Controllers\Admin\BorrowingController::class);
+            
+            
+            Route::prefix('borrowings')->name('borrowings.')->group(function () {
+                Route::get('/get-kode/{id}', [App\Http\Controllers\Admin\BorrowingController::class, 'getKodePeminjaman'])->name('get-kode');
+                Route::get('/get-detail/{id}', [App\Http\Controllers\Admin\BorrowingController::class, 'getDetail'])->name('get-detail');
+                Route::put('/update-status/{id}', [App\Http\Controllers\Admin\BorrowingController::class, 'updateStatus'])->name('update-status');
+                Route::put('/return/{id}', [App\Http\Controllers\Admin\BorrowingController::class, 'return'])->name('return');
+                
+            });
 
-        Route::prefix('borrowings')->name('borrowings.')->group(function () {
+            Route::prefix('transactions')->name('transactions.')->group(function () {
+                Route::get('/', [App\Http\Controllers\Admin\TransactionController::class, 'index'])->name('index');
+                Route::get('/{id}', [App\Http\Controllers\Admin\TransactionController::class, 'show'])->name('show');
+                Route::delete('/{id}', [App\Http\Controllers\Admin\TransactionController::class, 'destroy'])->name('destroy');
+                Route::post('/export', [App\Http\Controllers\Admin\TransactionController::class, 'export'])->name('export');
+            });
 
-            Route::get('/', [App\Http\Controllers\Admin\BorrowingController::class, 'index'])->name('index');
-            Route::get('/create', [App\Http\Controllers\Admin\BorrowingController::class, 'create'])->name('create');
-            Route::post('/', [App\Http\Controllers\Admin\BorrowingController::class, 'store'])->name('store');
-            Route::get('/{borrowing}', [App\Http\Controllers\Admin\BorrowingController::class, 'show'])->name('show');
-            Route::get('/{borrowing}/edit', [App\Http\Controllers\Admin\BorrowingController::class, 'edit'])->name('edit');
-            Route::put('/{borrowing}', [App\Http\Controllers\Admin\BorrowingController::class, 'update'])->name('update');
-            Route::delete('/{borrowing}', [App\Http\Controllers\Admin\BorrowingController::class, 'destroy'])->name('destroy');
-
-            Route::post('/{borrowing}/approve', [App\Http\Controllers\Admin\BorrowingController::class, 'approve'])->name('approve');
-            Route::post('/{borrowing}/reject', [App\Http\Controllers\Admin\BorrowingController::class, 'reject'])->name('reject');
-            Route::post('/{borrowing}/return', [App\Http\Controllers\Admin\BorrowingController::class, 'return'])->name('return');
-
-        });
-
-        /*
-        | Transactions
-        */
-
-        Route::resource('transactions', App\Http\Controllers\Admin\TransactionController::class);
-
-        Route::post('/transactions/{transaction}/approve', [App\Http\Controllers\Admin\TransactionController::class, 'approve'])->name('transactions.approve');
-        Route::post('/transactions/{transaction}/reject', [App\Http\Controllers\Admin\TransactionController::class, 'reject'])->name('transactions.reject');
-
-        Route::get('/transactions/user/{user}', [App\Http\Controllers\Admin\TransactionController::class, 'userTransactions'])->name('transactions.user-history');
-
-        Route::get('/laporan', [App\Http\Controllers\Admin\DashboardController::class, 'laporan'])->name('laporan');
+        Route::get('/laporan', [App\Http\Controllers\Admin\LaporanController::class, 'index'])->name('laporan.index');
+        Route::get('/laporan/export', [App\Http\Controllers\Admin\LaporanController::class, 'export'])->name('laporan.export');
 
     });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -141,7 +125,13 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware('petugas')
+    /*
+    |--------------------------------------------------------------------------
+    | PETUGAS ROUTES
+    |--------------------------------------------------------------------------
+    */
+
+Route::middleware('petugas')
     ->prefix('petugas')
     ->name('petugas.')
     ->group(function () {
@@ -149,95 +139,32 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Petugas\DashboardController::class, 'index'])->name('dashboard');
 
         Route::resource('alat', App\Http\Controllers\Petugas\AlatController::class)->except(['show']);
+        Route::get('/alat/{id}/detail', [App\Http\Controllers\Petugas\AlatController::class, 'getDetail'])->name('alat.detail');
 
-
-        /*
-        | PEMINJAMAN
-        */
-
-Route::prefix('peminjaman')->name('peminjaman.')->group(function () {
-
-    // halaman daftar peminjaman
-    Route::get('/', [App\Http\Controllers\Petugas\PeminjamanController::class, 'index'])->name('index');
-
-    // halaman form tambah peminjaman
-    Route::get('/create', [App\Http\Controllers\Petugas\PeminjamanController::class, 'create'])->name('create');
-
-    // proses simpan peminjaman dari form
-    Route::post('/store', [App\Http\Controllers\Petugas\PeminjamanController::class, 'store'])->name('store');
-
-    // update status peminjaman
-    Route::put('/{id}/update-status', [App\Http\Controllers\Petugas\PeminjamanController::class, 'updateStatus'])->name('update-status');
-
-    // hapus peminjaman
-    Route::delete('/{id}', [App\Http\Controllers\Petugas\PeminjamanController::class, 'destroy'])->name('destroy');
-
-    
-
-});
-
-
-/*
-| PENGEMBALIAN
-*/
-
-Route::prefix('pengembalian')->name('pengembalian.')->group(function () {
-
-    Route::get('/', [PengembalianController::class, 'index'])
-        ->name('index');
-
-    Route::get('/{id}/konfirmasi', [PengembalianController::class, 'konfirmasi'])
-        ->name('konfirmasi');
-
-    Route::post('/{id}/konfirmasi', [PengembalianController::class, 'konfirmasiStore'])
-        ->name('konfirmasi.store');
-
-    // HALAMAN PROSES
-    Route::get('/{id}/proses', [PengembalianController::class, 'proses'])
-        ->name('proses');
-
-    // SIMPAN PROSES
-    Route::post('/{id}/proses', [PengembalianController::class, 'prosesStore'])
-        ->name('proses.store');
-    
-       
-
-});
-
-
-
-/*
-| TRANSAKSI DENDA
-*/
-
-
-Route::prefix('transaksi')->name('transaksi.')->group(function () {
-
-    Route::get('/', [TransaksiDendaController::class, 'index'])->name('index');
-
-    Route::get('/create/{peminjaman_id}', [TransaksiDendaController::class, 'createTransaksi'])->name('create');
-
-    Route::post('/store/{peminjaman_id}', [TransaksiDendaController::class, 'storeTransaksi'])->name('store');
-
-    Route::get('/{id}', [TransaksiDendaController::class, 'show'])->name('show');
-
-    Route::get('/{id}/pembayaran', [TransaksiDendaController::class, 'pembayaran'])->name('pembayaran');
-
-    Route::post('/{id}/pembayaran', [TransaksiDendaController::class, 'prosesPembayaran'])->name('proses-pembayaran');
-
-    Route::get('/{id}/struk', [TransaksiDendaController::class, 'cetakStruk'])->name('struk');
-
-    // ROUTE EXPORT YANG BENAR
-    Route::post('/export', [TransaksiDendaController::class,'export'])
-        ->name('export');
-
-});
-
+        // Peminjaman routes
+        Route::resource('peminjaman', App\Http\Controllers\Petugas\PeminjamanController::class);
+    Route::post('/peminjaman/{id}/approve', [PeminjamanController::class, 'approve'])->name('petugas.peminjaman.approve');
+    Route::post('/peminjaman/{id}/reject', [PeminjamanController::class, 'reject'])->name('petugas.peminjaman.reject');
+    Route::post('/peminjaman/{id}/pickup', [PeminjamanController::class, 'confirmPickup'])->name('petugas.peminjaman.pickup');
+    Route::post('/peminjaman/{id}/transaksi', [PeminjamanController::class, 'prosesTransaksi'])->name('petugas.peminjaman.transaksi');
+        
+       Route::prefix('transaksi')->name('transaksi.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'index'])->name('index');
+            Route::get('/{id}', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'show'])->name('show');
+            Route::get('/{id}/data', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'getData'])->name('data');
+            Route::post('/{id}/bayar', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'bayar'])->name('bayar');  // ← Pastikan ini ada
+            Route::get('/{id}/cetak', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'cetakStruk'])->name('cetak');
+        
+            
+            // ✅ TAMBAHKAN DUA ROUTE INI:
+            Route::get('/{id}/bayar-form', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'formBayar'])->name('bayar.form');
+            Route::post('/{id}/proses-bayar', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'prosesBayar'])->name('bayar.proses');
+            
+            Route::get('/{id}/cetak', [App\Http\Controllers\Petugas\TransaksiDendaController::class, 'cetakStruk'])->name('cetak');
+        });
 
         Route::get('/laporan', [App\Http\Controllers\Petugas\LaporanController::class, 'index'])->name('laporan');
-
     });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -246,67 +173,34 @@ Route::prefix('transaksi')->name('transaksi.')->group(function () {
     */
 
     Route::middleware(['auth','role:user,peminjam'])
-    ->prefix('user')
-    ->name('user.')
-    ->group(function () {
+        ->prefix('user')
+        ->name('user.')
+        ->group(function () {
 
-        Route::get('/dashboard', [App\Http\Controllers\User\DashboardController::class, 'index'])->name('dashboard');
+            Route::get('/dashboard', [App\Http\Controllers\User\DashboardController::class, 'index'])->name('dashboard');
 
-        /*
-        | ALAT
-        */
+            Route::get('/alat', [App\Http\Controllers\User\AlatController::class, 'index'])->name('alat');
 
-        Route::get('/alat', [App\Http\Controllers\User\AlatController::class, 'index'])->name('alat');
+            Route::prefix('peminjaman')->name('peminjaman.')->group(function () {
+                Route::get('/', [App\Http\Controllers\User\PeminjamanController::class, 'index'])->name('index');
+                Route::get('/create/{laptop_id?}', [App\Http\Controllers\User\PeminjamanController::class, 'create'])->name('create');
+                Route::post('/', [App\Http\Controllers\User\PeminjamanController::class, 'store'])->name('store');
+                Route::get('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'show'])->name('show');
+                Route::delete('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'destroy'])->name('destroy');
+                Route::delete('/{id}/force', [App\Http\Controllers\User\PeminjamanController::class, 'forceDelete'])->name('force-delete');
+                Route::post('/{id}/take', [App\Http\Controllers\User\PeminjamanController::class, 'takeItem'])->name('take');
+            });
 
+            Route::prefix('pengembalian')->name('pengembalian.')->group(function () {
+                Route::get('/', [App\Http\Controllers\User\PengembalianController::class, 'index'])->name('index');
+                Route::get('/create/{peminjaman_id?}', [App\Http\Controllers\User\PengembalianController::class, 'create'])->name('create');
+                Route::post('/{peminjaman}', [App\Http\Controllers\User\PengembalianController::class, 'store'])->name('store');
+                Route::get('/{id}', [App\Http\Controllers\User\PengembalianController::class, 'show'])->name('show');
+            });
 
-        /*
-        | PEMINJAMAN
-        */
-
-        Route::prefix('peminjaman')->name('peminjaman.')->group(function () {
-
-            Route::get('/', [App\Http\Controllers\User\PeminjamanController::class, 'index'])->name('index');
-
-            Route::get('/create/{laptop_id?}', [App\Http\Controllers\User\PeminjamanController::class, 'create'])->name('create');
-
-            Route::post('/', [App\Http\Controllers\User\PeminjamanController::class, 'store'])->name('store');
-
-            Route::get('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'show'])->name('show');
-            
-                    Route::delete('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'destroy'])->name('destroy');
+            Route::get('/riwayat', [App\Http\Controllers\User\RiwayatController::class, 'index'])->name('history');
 
         });
-
-            /*
-    | PENGEMBALIAN - TAMBAHKAN INI
-    */
-    
-    Route::prefix('pengembalian')->name('pengembalian.')->group(function () {
-        
-        // Halaman daftar peminjaman yang siap dikembalikan
-        Route::get('/', [App\Http\Controllers\User\PengembalianController::class, 'index'])->name('index');
-        
-        // Halaman form pengembalian (opsional, jika perlu)
-        Route::get('/create/{peminjaman_id?}', [App\Http\Controllers\User\PengembalianController::class, 'create'])->name('create');
-        
-        // Proses pengembalian
-        Route::post('/{peminjaman}', [App\Http\Controllers\User\PengembalianController::class, 'store'])->name('store');
-        
-        // Detail pengembalian (jika diperlukan)
-        Route::get('/{id}', [App\Http\Controllers\User\PengembalianController::class, 'show'])->name('show');
-        
-    });
-
-
-
-        /*
-        | RIWAYAT
-        */
-
-        Route::get('/riwayat', [App\Http\Controllers\User\RiwayatController::class, 'index'])->name('history');
-
-    });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -317,13 +211,10 @@ Route::prefix('transaksi')->name('transaksi.')->group(function () {
     Route::prefix('profile')->name('profile.')->group(function () {
 
         Route::get('/', [ProfileController::class, 'index'])->name('index');
-
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
-
         Route::put('/update', [ProfileController::class, 'update'])->name('update');
 
     });
-
 
     /*
     |--------------------------------------------------------------------------
@@ -334,13 +225,11 @@ Route::prefix('transaksi')->name('transaksi.')->group(function () {
     Route::prefix('password')->name('password.')->group(function () {
 
         Route::get('/edit', [PasswordController::class, 'edit'])->name('edit');
-
         Route::put('/update', [PasswordController::class, 'update'])->name('change');
 
     });
 
 });
-
 
 Route::get('/test-session', function() {
     session(['test' => 'value']);

@@ -52,16 +52,6 @@
                 <h1 class="h2">
                     <i class="fas fa-laptop me-2"></i>Daftar Alat
                 </h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <div class="btn-group me-2">
-                        <a href="{{ route('user.peminjaman.index') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-list me-2"></i>Peminjaman Saya
-                        </a>
-                    </div>
-                    <span class="text-muted">
-                        Total: {{ $laptops->total() }} alat tersedia
-                    </span>
-                </div>
             </div>
 
             @if(session('success'))
@@ -91,33 +81,37 @@
                 </div>
             @endif
 
-            <!-- Filter Status -->
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <a href="{{ route('user.alat') }}" 
-                           class="btn btn-outline-secondary {{ !request('status') ? 'active' : '' }}">
-                            Semua
-                        </a>
-                        <a href="{{ route('user.alat', ['status' => 'tersedia']) }}" 
-                           class="btn btn-outline-success {{ request('status') == 'tersedia' ? 'active' : '' }}">
-                            Tersedia
-                        </a>
-                        <a href="{{ route('user.alat', ['status' => 'dipinjam']) }}" 
-                           class="btn btn-outline-warning {{ request('status') == 'dipinjam' ? 'active' : '' }}">
-                            Dipinjam
-                        </a>
-                        <a href="{{ route('user.alat', ['status' => 'rusak']) }}" 
-                           class="btn btn-outline-danger {{ request('status') == 'rusak' ? 'active' : '' }}">
-                            Rusak
-                        </a>
-                        <a href="{{ route('user.alat', ['status' => 'maintenance']) }}" 
-                           class="btn btn-outline-info {{ request('status') == 'maintenance' ? 'active' : '' }}">
-                            Maintenance
-                        </a>
-                    </div>
-                </div>
-            </div>
+<!-- Filter Status -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="btn-group btn-group-sm flex-wrap mb-2" role="group">
+            <a href="{{ route('petugas.alat.index') }}" 
+               class="btn btn-outline-secondary {{ !request('status') && !request('kondisi') ? 'active' : '' }}">
+                Semua
+            </a>
+            <a href="{{ route('petugas.alat.index', ['kondisi' => 'baik']) }}" 
+               class="btn btn-outline-success {{ request('kondisi') == 'baik' ? 'active' : '' }}">
+                <i class="fas me-1"></i>Baik
+            </a>
+            <a href="{{ route('petugas.alat.index', ['status' => 'dipinjam']) }}" 
+               class="btn btn-outline-warning {{ request('status') == 'dipinjam' ? 'active' : '' }}">
+                Dipinjam
+            </a>
+            <a href="{{ route('petugas.alat.index', ['kondisi' => 'rusak_ringan']) }}" 
+               class="btn btn-outline-warning {{ request('kondisi') == 'rusak_ringan' ? 'active' : '' }}">
+                <i class="fas me-1"></i>Rusak Ringan
+            </a>
+            <a href="{{ route('petugas.alat.index', ['status' => 'maintenance']) }}" 
+               class="btn btn-outline-info {{ request('status') == 'maintenance' ? 'active' : '' }}">
+                Maintenance
+            </a>
+                        <a href="{{ route('petugas.alat.index', ['kondisi' => 'rusak_berat']) }}" 
+               class="btn btn-outline-danger {{ request('kondisi') == 'rusak_berat' ? 'active' : '' }}">
+                <i class="fas me-1"></i>Rusak Berat
+            </a>
+        </div>
+    </div>
+</div>
 
             <!-- Search and Filter -->
             <div class="card mb-4">
@@ -223,22 +217,22 @@
                             </div>
                             
                             @if($laptop->kondisi)
-                            <div class="mb-3">
-                                @php
-                                    $conditionBadge = [
-                                        'baik' => 'success',
-                                        'sedang' => 'warning',
-                                        'rusak_ringan' => 'warning',
-                                        'rusak_berat' => 'danger'
-                                    ];
-                                    $badgeColor = $conditionBadge[$laptop->kondisi] ?? 'secondary';
-                                @endphp
-                                <span class="badge bg-{{ $badgeColor }}">
-                                    <i class="fas fa-{{ $laptop->kondisi == 'baik' ? 'check-circle' : ($laptop->kondisi == 'rusak_berat' ? 'times-circle' : 'exclamation-circle') }} me-1"></i>
-                                    Kondisi: {{ ucfirst(str_replace('_', ' ', $laptop->kondisi)) }}
-                                </span>
-                            </div>
-                            @endif
+<div class="mb-3">
+    @php
+        $conditionBadge = [
+            'baik' => 'success',
+            'sedang' => 'warning',
+            'rusak_ringan' => 'warning',
+            'rusak_berat' => 'danger'
+        ];
+        $badgeColor = $conditionBadge[$laptop->kondisi] ?? 'secondary';
+    @endphp
+    <span class="badge bg-{{ $badgeColor }}">
+        <i class="fas fa-{{ $laptop->kondisi == 'baik' ? 'check-circle' : ($laptop->kondisi == 'rusak_berat' ? 'times-circle' : 'exclamation-circle') }} me-1"></i>
+        Kondisi: {{ ucfirst(str_replace('_', ' ', $laptop->kondisi)) }}
+    </span>
+</div>
+@endif
                             
                             @if($laptop->masa_garansi ?? $laptop->garansi)
                             <div class="mb-2">
@@ -555,311 +549,317 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-    // Sound effect function
-    function playSubmitSound(button) {
-        var sound = document.getElementById('submitSound');
-        if (sound) {
-            sound.currentTime = 0;
-            sound.play().catch(e => console.log('Audio play failed:', e));
+    // ====================== DETAIL MODAL ======================
+    function loadDetail(id) {
+        console.log('Loading detail for ID:', id);
+        
+        const modalBody = document.getElementById('detailModalBody');
+        if (!modalBody) {
+            console.error('Modal body not found');
+            return;
         }
         
-        button.classList.add('btn-clicked');
-        setTimeout(() => {
-            button.classList.remove('btn-clicked');
-        }, 100);
-    }
-    
-    // Show photo modal
-    function showPhotoModal(imageUrl, title) {
-        const modal = new bootstrap.Modal(document.getElementById('photoModal'));
-        document.getElementById('modalPhoto').src = imageUrl;
-        document.getElementById('photoModalTitle').innerHTML = '<i class="fas fa-image me-2"></i>Foto: ' + title;
-        modal.show();
-    }
-    
-    // Load detail via AJAX
-    function loadDetail(id) {
-        document.getElementById('detailModalBody').innerHTML = `
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
+        modalBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-2">Memuat data...</p>
+                <p class="mt-3 text-muted">Memuat data alat...</p>
             </div>
         `;
         
-        fetch(`/petugas/alat/${id}/detail`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Gagal memuat data');
-                }
-                return response.json();
-            })
-            .then(laptop => {
-                const formatRupiah = (value) => {
-                    return value ? 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '-';
-                };
-                
-                const formatDate = (date) => {
-                    if (!date) return '-';
-                    const d = new Date(date);
-                    return d.toLocaleDateString('id-ID');
-                };
-                
-                let html = `
-                    <div class="row">
-                        <div class="col-md-12 text-center mb-3">
-                            ${laptop.gambar ? 
-                                `<img src="/${laptop.gambar}" alt="${laptop.merk} ${laptop.model}" style="max-height: 150px; object-fit: cover; cursor: pointer;" class="img-thumbnail" onclick="showPhotoModal('/${laptop.gambar}', '${laptop.merk} ${laptop.model}')">` : 
-                                `<div class="bg-light p-3 d-inline-block rounded" style="cursor: pointer;" onclick="showPhotoModal('{{ asset('assets/img/no-image.png') }}', '${laptop.merk} ${laptop.model}')"><i class="fas fa-camera text-muted fa-3x"></i></div>`
-                            }
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="detail-row">
-                                <div class="detail-label">ID</div>
-                                <div class="detail-value">${laptop.id}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Merk</div>
-                                <div class="detail-value">${laptop.merk}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Model</div>
-                                <div class="detail-value">${laptop.model}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Processor</div>
-                                <div class="detail-value">${laptop.processor || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">RAM</div>
-                                <div class="detail-value">${laptop.ram || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Storage</div>
-                                <div class="detail-value">${laptop.storage || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Serial Number</div>
-                                <div class="detail-value">${laptop.serial_number || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Tahun Pembelian</div>
-                                <div class="detail-value">${laptop.tahun_pembelian || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Lokasi</div>
-                                <div class="detail-value">${laptop.lokasi || '-'}</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="detail-row">
-                                <div class="detail-label">Status</div>
-                                <div class="detail-value">
-                                    <span class="badge bg-${laptop.status === 'tersedia' ? 'success' : (laptop.status === 'dipinjam' ? 'warning' : (laptop.status === 'rusak' ? 'danger' : 'info'))}">
-                                        ${laptop.status}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Kondisi</div>
-                                <div class="detail-value">
-                                    <span class="badge bg-${laptop.kondisi === 'baik' ? 'success' : (laptop.kondisi === 'rusak_ringan' ? 'warning' : 'danger')}">
-                                        ${laptop.kondisi ? laptop.kondisi.replace('_', ' ') : '-'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Warna</div>
-                                <div class="detail-value">${laptop.warna || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">OS</div>
-                                <div class="detail-value">${laptop.os || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Baterai Kondisi</div>
-                                <div class="detail-value">${laptop.baterai_kondisi || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Garansi</div>
-                                <div class="detail-value">${laptop.garansi || '-'}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Garansi Berakhir</div>
-                                <div class="detail-value">${formatDate(laptop.garansi_berakhir)}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Harga Beli</div>
-                                <div class="detail-value">${formatRupiah(laptop.harga_beli)}</div>
-                            </div>
-                            <div class="detail-row">
-                                <div class="detail-label">Harga Sewa</div>
-                                <div class="detail-value">${formatRupiah(laptop.harga_sewa_harian)}</div>
-                            </div>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <div class="detail-row">
-                                <div class="detail-label">Keterangan</div>
-                                <div class="detail-value">${laptop.keterangan || '-'}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                document.getElementById('detailModalBody').innerHTML = html;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('detailModalBody').innerHTML = `
-                    <div class="text-center py-4 text-danger">
-                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
-                        <p class="mb-0">Gagal memuat data</p>
-                        <small>${error.message}</small>
-                    </div>
-                `;
-            });
+        const url = `/petugas/alat/${id}/detail`;
+        
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(laptop => {
+            displayLaptopDetail(laptop);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            modalBody.innerHTML = `
+                <div class="text-center py-5 text-danger">
+                    <i class="fas fa-exclamation-circle fa-4x mb-3"></i>
+                    <h5>Gagal Memuat Data</h5>
+                    <p class="mb-3">${error.message}</p>
+                    <button class="btn btn-sm btn-primary" onclick="loadDetail(${id})">
+                        <i class="fas fa-sync me-1"></i>Coba Lagi
+                    </button>
+                </div>
+            `;
+        });
     }
-
-    $(document).ready(function() {
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-
-        // Set tanggal kembali min date based on tanggal pinjam
-        $('input[name="tanggal_pinjam"]').change(function() {
-            const laptopId = this.id.replace('tanggal_pinjam', '');
-            const tanggalPinjam = $(this).val();
-            
-            if (!tanggalPinjam) return;
-            
-            const nextDay = new Date(tanggalPinjam);
-            nextDay.setDate(nextDay.getDate() + 1);
-            const nextDayStr = nextDay.toISOString().split('T')[0];
-            
-            const maxDate = new Date(tanggalPinjam);
-            maxDate.setDate(maxDate.getDate() + 30);
-            const maxDateStr = maxDate.toISOString().split('T')[0];
-            
-            $(`#tanggal_kembali${laptopId}`).attr('min', nextDayStr);
-            $(`#tanggal_kembali${laptopId}`).attr('max', maxDateStr);
-            
-            const defaultDate = new Date(tanggalPinjam);
-            defaultDate.setDate(defaultDate.getDate() + 7);
-            const defaultDateStr = defaultDate.toISOString().split('T')[0];
-            
-            const currentValue = $(`#tanggal_kembali${laptopId}`).val();
-            if (!currentValue || new Date(currentValue) < nextDay || new Date(currentValue) > maxDate) {
-                $(`#tanggal_kembali${laptopId}`).val(defaultDateStr);
-            }
-            
-            updateDurationInfo(laptopId);
-        });
+    
+    function displayLaptopDetail(laptop) {
+        const formatRupiah = (value) => {
+            if (!value) return '-';
+            return 'Rp ' + parseFloat(value).toLocaleString('id-ID');
+        };
         
-        $('input[name="tanggal_pinjam"], input[name="tanggal_kembali_rencana"]').change(function() {
-            const laptopId = this.id.replace('tanggal_pinjam', '').replace('tanggal_kembali', '');
-            updateDurationInfo(laptopId);
-        });
-        
-        function updateDurationInfo(laptopId) {
-            const tanggalPinjam = $(`#tanggal_pinjam${laptopId}`).val();
-            const tanggalKembali = $(`#tanggal_kembali${laptopId}`).val();
-            
-            if (tanggalPinjam && tanggalKembali) {
-                const pinjamDate = new Date(tanggalPinjam);
-                const kembaliDate = new Date(tanggalKembali);
-                const diffTime = Math.abs(kembaliDate - pinjamDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                const infoElement = $(`#durationInfo${laptopId}`);
-                if (infoElement.length) {
-                    if (diffDays > 30) {
-                        infoElement.text(`Maksimal 30 hari (${diffDays} hari - MELEBIHI BATAS!)`);
-                        infoElement.removeClass('text-muted').addClass('text-danger fw-bold');
-                    } else {
-                        infoElement.text(`Maksimal 30 hari (${diffDays} hari)`);
-                        infoElement.removeClass('text-danger fw-bold').addClass('text-muted');
-                    }
-                }
-            }
-        }
-        
-        $('input[name="tanggal_pinjam"]').each(function() {
-            $(this).trigger('change');
-        });
-        
-        $('form[id^="pinjamForm"]').submit(function(e) {
-            const form = $(this);
-            const formId = form.attr('id').replace('pinjamForm', '');
-            const tanggalPinjam = form.find('input[name="tanggal_pinjam"]').val();
-            const tanggalKembali = form.find('input[name="tanggal_kembali_rencana"]').val();
-            
-            if (!tanggalPinjam || !tanggalKembali) {
-                e.preventDefault();
-                alert('Mohon isi tanggal pinjam dan tanggal kembali!');
-                return false;
-            }
-            
-            if (tanggalKembali <= tanggalPinjam) {
-                e.preventDefault();
-                alert('Tanggal kembali harus lebih besar dari tanggal pinjam!');
-                return false;
-            }
-            
-            const pinjamDate = new Date(tanggalPinjam);
-            const kembaliDate = new Date(tanggalKembali);
-            const diffTime = Math.abs(kembaliDate - pinjamDate);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays > 30) {
-                e.preventDefault();
-                alert('Maksimal peminjaman adalah 30 hari!');
-                return false;
-            }
-            
-            const tujuan = form.find('select[name="tujuan"]').val();
-            if (!tujuan) {
-                e.preventDefault();
-                alert('Mohon pilih tujuan peminjaman!');
-                return false;
-            }
-            
-            var sound = document.getElementById('submitSound');
-            if (sound) {
-                sound.currentTime = 0;
-                sound.play().catch(e => console.log('Audio play failed:', e));
-            }
-            
-            const submitBtn = $(`#submitBtn${formId}`);
-            submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Mengirim...');
-            submitBtn.prop('disabled', true);
-            
-            return true;
-        });
-        
-        $('.disabled').click(function(e) {
-            e.preventDefault();
-            return false;
-        });
-        
-        setTimeout(function() {
-            $('.alert-dismissible').fadeTo(500, 0).slideUp(500, function(){
-                $(this).alert('close');
+        const formatDate = (date) => {
+            if (!date) return '-';
+            const d = new Date(date);
+            return d.toLocaleDateString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
             });
-        }, 5000);
+        };
         
-        $('.modal').on('hidden.bs.modal', function() {
-            $(this).find('form')[0].reset();
-            const modalId = $(this).attr('id').replace('pinjamModal', '');
-            if (modalId) {
-                $(`#tanggal_pinjam${modalId}`).trigger('change');
-            }
-        });
-    });
+        const getStatusBadge = (status) => {
+            const badges = {
+                'tersedia': '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Tersedia</span>',
+                'dipinjam': '<span class="badge bg-warning"><i class="fas fa-user-clock me-1"></i>Dipinjam</span>',
+                'rusak': '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rusak</span>',
+                'maintenance': '<span class="badge bg-info"><i class="fas fa-tools me-1"></i>Maintenance</span>'
+            };
+            return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+        };
+        
+        const getKondisiBadge = (kondisi) => {
+            const badges = {
+                'baik': '<span class="badge bg-success"><i class="fas fa-smile me-1"></i>Baik</span>',
+                'rusak_ringan': '<span class="badge bg-warning"><i class="fas fa-meh me-1"></i>Rusak Ringan</span>',
+                'rusak_berat': '<span class="badge bg-danger"><i class="fas fa-frown me-1"></i>Rusak Berat</span>'
+            };
+            return badges[kondisi] || `<span class="badge bg-secondary">${kondisi}</span>`;
+        };
+        
+        const modalBody = document.getElementById('detailModalBody');
+        
+        let html = `
+            <div class="container-fluid">
+                <!-- Foto -->
+                <div class="row mb-4">
+                    <div class="col-12 text-center">
+                        ${laptop.gambar ? 
+                            `<img src="/${laptop.gambar}" alt="${laptop.merk} ${laptop.model}" 
+                                 style="max-height: 200px; width: auto; object-fit: cover; cursor: pointer;" 
+                                 class="img-thumbnail rounded shadow-sm" 
+                                 onclick="showPhotoModal('/${laptop.gambar}', '${laptop.merk} ${laptop.model}')">` : 
+                            `<div class="bg-light p-4 d-inline-block rounded shadow-sm">
+                                <i class="fas fa-laptop text-secondary fa-5x"></i>
+                                <p class="text-muted mt-2 mb-0 small">Tidak ada gambar</p>
+                             </div>`
+                        }
+                    </div>
+                </div>
+                
+                <!-- Informasi Utama -->
+                <div class="row">
+                    <div class="col-12">
+                        <h4 class="mb-3">${escapeHtml(laptop.merk)} ${escapeHtml(laptop.model)}</h4>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Kolom Kiri -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informasi Dasar</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td width="35%"><strong>ID Alat</strong></td>
+                                        <td>#${laptop.id}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Merk</strong></td>
+                                        <td>${escapeHtml(laptop.merk) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Model</strong></td>
+                                        <td>${escapeHtml(laptop.model) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Serial Number</strong></td>
+                                        <td><code>${escapeHtml(laptop.serial_number) || '-'}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status</strong></td>
+                                        <td>${getStatusBadge(laptop.status)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Kondisi</strong></td>
+                                        <td>${getKondisiBadge(laptop.kondisi)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tahun Pembelian</strong></td>
+                                        <td>${laptop.tahun_pembelian || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Lokasi</strong></td>
+                                        <td><i class="fas fa-map-marker-alt me-1 text-muted"></i>${escapeHtml(laptop.lokasi) || '-'}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Kolom Kanan -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-microchip me-2"></i>Spesifikasi</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td width="40%"><strong>Processor</strong></td>
+                                        <td>${escapeHtml(laptop.processor) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>RAM</strong></td>
+                                        <td>${escapeHtml(laptop.ram) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Storage</strong></td>
+                                        <td>${escapeHtml(laptop.storage) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Warna</strong></td>
+                                        <td>${escapeHtml(laptop.warna) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>OS</strong></td>
+                                        <td>${escapeHtml(laptop.os) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Kondisi Baterai</strong></td>
+                                        <td>${escapeHtml(laptop.baterai_kondisi) || '-'}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Harga & Garansi -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-money-bill me-2"></i>Informasi Harga</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td width="40%"><strong>Harga Beli</strong></td>
+                                        <td>${formatRupiah(laptop.harga_beli)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Harga Sewa/Hari</strong></td>
+                                        <td>${formatRupiah(laptop.harga_sewa_harian)}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Informasi Garansi</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td width="40%"><strong>Garansi</strong></td>
+                                        <td>${escapeHtml(laptop.garansi) || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Garansi Berakhir</strong></td>
+                                        <td>${formatDate(laptop.garansi_berakhir)}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Keterangan -->
+                ${laptop.keterangan ? `
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Keterangan</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-0">${escapeHtml(laptop.keterangan)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Meta Info -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-calendar me-2"></i>Informasi Sistem</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td width="30%"><strong>Dibuat Pada</strong></td>
+                                        <td>${formatDate(laptop.created_at)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Terakhir Update</strong></td>
+                                        <td>${formatDate(laptop.updated_at)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status Aktif</strong></td>
+                                        <td>${laptop.is_active ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-danger">Tidak Aktif</span>'}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modalBody.innerHTML = html;
+    }
+    
+    function showPhotoModal(imageUrl, title) {
+        const modalElement = document.getElementById('photoModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            const modalPhoto = document.getElementById('modalPhoto');
+            const modalTitle = document.getElementById('photoModalTitle');
+            if (modalPhoto) modalPhoto.src = imageUrl;
+            if (modalTitle) modalTitle.innerHTML = '<i class="fas fa-image me-2"></i>Foto: ' + title;
+            modal.show();
+        }
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 </script>
 
 <style>

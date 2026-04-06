@@ -1,385 +1,516 @@
 @extends('layouts.app')
 
-@section('title', 'Manajemen Transaksi')
+@section('title', 'Transaksi & Denda')
+@section('header-title', 'Transaksi & Denda')
 @section('header-icon', 'fas fa-money-bill-wave')
-@section('header-title', 'Manajemen Transaksi')
 
 @section('content')
-<div class="container-fluid px-0">
+<div class="container-fluid">
     <!-- ====================== STATISTIK ====================== -->
     <div class="row mb-4 g-3">
         <div class="col-xl-3 col-md-6">
             <div class="stats-card">
                 <div class="stats-icon bg-primary bg-opacity-10 text-primary">
-                    <i class="fas fa-list"></i>
+                    <i class="fas fa-receipt"></i>
                 </div>
-                <div class="stats-number">{{ $statistics['total'] ?? 0 }}</div>
-                <div class="stats-label">Total Transaksi</div>
+                <h3 class="stats-number">{{ $total_transaksi ?? 0 }}</h3>
+                <p class="stats-label">Total Transaksi/Denda</p>
+                <div class="stats-trend text-primary">
+                    <i class="fas fa-chart-line me-1"></i>
+                    Semua transaksi
+                </div>
             </div>
         </div>
-        
+
         <div class="col-xl-3 col-md-6">
             <div class="stats-card">
                 <div class="stats-icon bg-success bg-opacity-10 text-success">
-                    <i class="fas fa-check-circle"></i>
+                    <i class="fas fa-coins"></i>
                 </div>
-                <div class="stats-number">{{ $statistics['total_success'] ?? 0 }}</div>
-                <div class="stats-label">Sukses</div>
+                <h3 class="stats-number">Rp {{ number_format($total_pendapatan ?? 0, 0, ',', '.') }}</h3>
+                <p class="stats-label">Total Pendapatan</p>
+                <div class="stats-trend text-success">
+                    <i class="fas fa-arrow-up me-1"></i>
+                    Denda lunas
+                </div>
             </div>
         </div>
-        
+
         <div class="col-xl-3 col-md-6">
             <div class="stats-card">
                 <div class="stats-icon bg-warning bg-opacity-10 text-warning">
                     <i class="fas fa-clock"></i>
                 </div>
-                <div class="stats-number">{{ $statistics['total_pending'] ?? 0 }}</div>
-                <div class="stats-label">Menunggu</div>
+                <h3 class="stats-number">Rp {{ number_format($total_denda_belum_lunas ?? 0, 0, ',', '.') }}</h3>
+                <p class="stats-label">Denda Belum Lunas</p>
+                <div class="stats-trend text-warning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Perlu penagihan
+                </div>
             </div>
         </div>
-        
+
         <div class="col-xl-3 col-md-6">
             <div class="stats-card">
-                <div class="stats-icon bg-danger bg-opacity-10 text-danger">
-                    <i class="fas fa-money-bill"></i>
+                <div class="stats-icon bg-info bg-opacity-10 text-info">
+                    <i class="fas fa-hourglass-half"></i>
                 </div>
-                <div class="stats-number">{{ $statistics['total_payment'] ?? 'Rp 0' }}</div>
-                <div class="stats-label">Total Pembayaran</div>
+                <h3 class="stats-number">{{ $transaksi_pending ?? 0 }}</h3>
+                <p class="stats-label">Transaksi Pending</p>
+                <div class="stats-trend text-info">
+                    <i class="fas fa-sync-alt me-1"></i>
+                    Proses verifikasi
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ====================== FILTER DAN PENCARIAN ====================== -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body">
+            <form action="{{ route('admin.transactions.index') }}" method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Status Pembayaran</label>
+                    <select class="form-select shadow-sm" name="status_pembayaran">
+                        <option value="">Semua Status</option>
+                        <option value="belum_lunas" {{ request('status_pembayaran') == 'belum_lunas' ? 'selected' : '' }}>
+                            Belum Lunas
+                        </option>
+                        <option value="sebagian" {{ request('status_pembayaran') == 'sebagian' ? 'selected' : '' }}>
+                            Sebagian
+                        </option>
+                        <option value="lunas" {{ request('status_pembayaran') == 'lunas' ? 'selected' : '' }}>
+                            Lunas
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Status Transaksi</label>
+                    <select class="form-select shadow-sm" name="status_transaksi">
+                        <option value="">Semua Status</option>
+                        <option value="pending" {{ request('status_transaksi') == 'pending' ? 'selected' : '' }}>
+                            Pending
+                        </option>
+                        <option value="proses_cek" {{ request('status_transaksi') == 'proses_cek' ? 'selected' : '' }}>
+                            Proses Cek
+                        </option>
+                        <option value="selesai" {{ request('status_transaksi') == 'selesai' ? 'selected' : '' }}>
+                            Selesai
+                        </option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Pencarian</label>
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control" 
+                               name="search" 
+                               placeholder="Cari peminjam, kode peminjaman..."
+                               value="{{ request('search') }}">
+                    </div>
+                </div>
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="d-flex gap-2 w-100">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="fas fa-filter me-2"></i>Filter
+                        </button>
+                        <a href="{{ route('admin.transactions.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- ====================== TABEL TRANSAKSI ====================== -->
     <div class="card border-0 shadow-sm">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-list text-primary me-2"></i>
-                    Daftar Transaksi
-                </h5>
-                <div class="d-flex gap-2">
-                    <form method="GET" action="{{ route('admin.transactions.index') }}" class="d-flex">
-                        <input type="text" name="search" class="form-control form-control-sm me-2" 
-                               placeholder="Cari transaksi..." value="{{ request('search') }}">
-                        <button type="submit" class="btn btn-sm btn-primary">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </form>
-                    <a href="{{ route('admin.transactions.create') }}" class="btn btn-sm btn-success">
-                        <i class="fas fa-plus me-1"></i> Buat Transaksi
-                    </a>
-                </div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list me-2"></i>Daftar Transaksi & Denda
+            </h5>
+            <div class="d-flex gap-2">
+                <!-- HAPUS TOMBOL KE PENGEMBALIAN - Admin tidak punya menu pengembalian -->
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
+                    <i class="fas fa-file-export me-2"></i>Export
+                </button>
             </div>
+        </div>
+        
+        <div class="card-body">
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
 
-            <!-- Filter -->
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <!-- Filter Status -->
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('status'), ['status' => ''])) }}" 
-                               class="btn btn-outline-secondary {{ !request('status') ? 'active' : '' }}">
-                                Semua Status
-                            </a>
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('status'), ['status' => 'pending'])) }}" 
-                               class="btn btn-outline-warning {{ request('status') == 'pending' ? 'active' : '' }}">
-                                Menunggu
-                            </a>
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('status'), ['status' => 'success'])) }}" 
-                               class="btn btn-outline-success {{ request('status') == 'success' ? 'active' : '' }}">
-                                Sukses
-                            </a>
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('status'), ['status' => 'failed'])) }}" 
-                               class="btn btn-outline-danger {{ request('status') == 'failed' ? 'active' : '' }}">
-                                Gagal
-                            </a>
-                        </div>
-                        
-                        <!-- Filter Jenis (Hanya Pembayaran) -->
-                        <div class="btn-group btn-group-sm" role="group">
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('jenis'), ['jenis' => ''])) }}" 
-                               class="btn btn-outline-secondary {{ !request('jenis') ? 'active' : '' }}">
-                                Semua Jenis
-                            </a>
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('jenis'), ['jenis' => 'payment'])) }}" 
-                               class="btn btn-outline-success {{ request('jenis') == 'payment' ? 'active' : '' }}">
-                                Pembayaran
-                            </a>
-                            <a href="{{ route('admin.transactions.index', array_merge(request()->except('jenis'), ['jenis' => 'penalty'])) }}" 
-                               class="btn btn-outline-danger {{ request('jenis') == 'penalty' ? 'active' : '' }}">
-                                Denda
-                            </a>
-                        </div>
-                        
-                        <!-- Filter Tanggal -->
-                        <form method="GET" action="{{ route('admin.transactions.index') }}" class="d-flex gap-2">
-                            @foreach(request()->except(['start_date', 'end_date', 'page']) as $key => $value)
-                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if(($transaksis ?? $transactions ?? collect())->count() > 0)
+                @php
+                    $dataTransaksi = $transaksis ?? $transactions ?? collect();
+                @endphp
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th width="50" class="text-center">No</th>
+                                <th>Transaksi</th>
+                                <th>Peminjam</th>
+                                <th>Alat</th>
+                                <th class="text-end">Total Transaksi</th>
+                                <th class="text-center">Status Pembayaran</th>
+                                <th class="text-center">Status Transaksi</th>
+                                <th class="text-center">Tanggal</th>
+                                <th class="text-center" width="80">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($dataTransaksi as $index => $item)
+                            <tr>
+                                <td class="text-center">{{ $dataTransaksi->firstItem() + $index }}</td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <strong class="text-primary">#{{ $item->id }}</strong>
+                                        <small class="text-muted">
+                                            <i class="fas fa-hashtag me-1"></i>
+                                            {{ $item->peminjaman->kode_peminjaman ?? 'N/A' }}
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 36px; height: 36px;">
+                                            {{ strtoupper(substr($item->user->name ?? 'A', 0, 1)) }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ $item->user->name ?? 'N/A' }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ $item->user->email ?? '' }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if($item->peminjaman && $item->peminjaman->laptop)
+                                        <div>
+                                            <strong>{{ $item->peminjaman->laptop->merk ?? '' }} {{ $item->peminjaman->laptop->model ?? '' }}</strong>
+                                            <br>
+                                            <small class="text-muted">
+                                                SN: {{ $item->peminjaman->laptop->serial_number ?? '-' }}
+                                            </small>
+                                        </div>
+                                    @else
+                                        <span class="badge bg-danger">Data alat tidak ditemukan</span>
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex flex-column align-items-end">
+                                        <strong class="text-dark">Rp {{ number_format($item->total_denda, 0, ',', '.') }}</strong>
+                                        @if($item->denda_dibayar > 0)
+                                            <small class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                Dibayar: Rp {{ number_format($item->denda_dibayar, 0, ',', '.') }}
+                                            </small>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    @switch($item->status_pembayaran)
+                                        @case('lunas')
+                                            <span class="badge bg-success rounded-pill px-3">
+                                                <i class="fas fa-check-circle me-1"></i>Lunas
+                                            </span>
+                                            @break
+                                        @case('sebagian')
+                                            <span class="badge bg-warning rounded-pill px-3">
+                                                <i class="fas fa-exclamation-circle me-1"></i>Sebagian
+                                            </span>
+                                            @break
+                                        @case('belum_lunas')
+                                            <span class="badge bg-danger rounded-pill px-3">
+                                                <i class="fas fa-clock me-1"></i>Belum Lunas
+                                            </span>
+                                            @break
+                                        @default
+                                            <span class="badge bg-secondary rounded-pill px-3">{{ $item->status_pembayaran }}</span>
+                                    @endswitch
+                                    <br>
+                                    @if($item->status_pembayaran != 'lunas')
+                                        <small class="text-muted">
+                                            Sisa: Rp {{ number_format($item->total_denda - $item->denda_dibayar, 0, ',', '.') }}
+                                        </small>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @switch($item->status_transaksi)
+                                        @case('selesai')
+                                            <span class="badge bg-success rounded-pill px-3">
+                                                <i class="fas fa-check me-1"></i>Selesai
+                                            </span>
+                                            @break
+                                        @case('proses_cek')
+                                            <span class="badge bg-info rounded-pill px-3">
+                                                <i class="fas fa-spinner me-1"></i>Proses Cek
+                                            </span>
+                                            @break
+                                        @case('pending')
+                                            <span class="badge bg-warning rounded-pill px-3">
+                                                <i class="fas fa-clock me-1"></i>Pending
+                                            </span>
+                                            @break
+                                        @default
+                                            <span class="badge bg-secondary rounded-pill px-3">{{ $item->status_transaksi }}</span>
+                                    @endswitch
+                                </td>
+                                <td class="text-center">
+                                    <small class="text-muted">
+                                        <i class="far fa-calendar me-1"></i>
+                                        {{ $item->created_at->format('d/m/Y') }}
+                                    </small>
+                                    @if($item->waktu_cek)
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="far fa-clock me-1"></i>
+                                            {{ \Carbon\Carbon::parse($item->waktu_cek)->format('H:i') }}
+                                        </small>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                                type="button" 
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" 
+                                                   href="{{ route('admin.transactions.show', $item->id) }}">
+                                                    <i class="fas fa-eye me-2"></i>Detail
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <hr class="dropdown-divider">
+                                            </li>
+                                            <li>
+                                                <button type="button"
+                                                        class="dropdown-item text-danger"
+                                                        onclick="deleteTransaction({{ $item->id }}, '{{ $item->id }}')">
+                                                    <i class="fas fa-trash me-2"></i>Hapus Transaksi
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
                             @endforeach
-                            <input type="date" name="start_date" class="form-control form-control-sm" 
-                                   value="{{ request('start_date') }}" placeholder="Dari" style="width: 130px;">
-                            <input type="date" name="end_date" class="form-control form-control-sm" 
-                                   value="{{ request('end_date') }}" placeholder="Sampai" style="width: 130px;">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-filter"></i> Filter
-                            </button>
-                            @if(request('start_date') || request('end_date'))
-                                <a href="{{ route('admin.transactions.index', request()->except(['start_date', 'end_date'])) }}" 
-                                   class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-times"></i> Reset
-                                </a>
-                            @endif
-                        </form>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="text-muted">
+                        Menampilkan {{ $dataTransaksi->firstItem() }} - {{ $dataTransaksi->lastItem() }} 
+                        dari {{ $dataTransaksi->total() }} transaksi
+                    </div>
+                    <div>
+                        {{ $dataTransaksi->links() }}
                     </div>
                 </div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        32
-                            <th>Kode</th>
-                            <th>User</th>
-                            <th>Jenis</th>
-                            <th>Jumlah Bayar</th>
-                            <th>Status</th>
-                            <th>Tanggal</th>
-                            <th>Aksi</th>
-                        </thead>
-                    <tbody>
-                        @forelse($transactions as $transaction)
-                        <tr>
-                            <td>
-                                <span class="badge bg-light text-dark">#{{ $transaction->kode_transaksi ?? 'TRX-'.$transaction->id }}</span>
-                            </td>
-                            <td>
-                                <div class="fw-bold">{{ $transaction->user->name ?? '-' }}</div>
-                                <small class="text-muted">{{ $transaction->user->email ?? '-' }}</small>
-                            </td>
-                            <td>
-                                @php
-                                    $jenisColors = [
-                                        'payment' => 'success',
-                                        'penalty' => 'danger'
-                                    ];
-                                    $jenisText = [
-                                        'payment' => 'Pembayaran',
-                                        'penalty' => 'Denda'
-                                    ];
-                                @endphp
-                                <span class="badge bg-{{ $jenisColors[$transaction->jenis_transaksi] ?? 'secondary' }}">
-                                    {{ $jenisText[$transaction->jenis_transaksi] ?? $transaction->jenis_transaksi }}
-                                </span>
-                                @if($transaction->peminjaman_id)
-                                    <br>
-                                    <small class="text-muted">Peminjaman #{{ $transaction->peminjaman_id }}</small>
-                                @endif
-                            </td>
-                            <td class="fw-bold text-success">
-                                Rp {{ number_format($transaction->jumlah, 0, ',', '.') }}
-                                @if($transaction->metode_pembayaran)
-                                    <br>
-                                    <small class="text-muted">{{ $transaction->metode_pembayaran }}</small>
-                                @endif
-                            </td>
-                            <td>
-                                @php
-                                    $statusColors = [
-                                        'pending' => 'warning',
-                                        'success' => 'success',
-                                        'failed' => 'danger',
-                                        'cancelled' => 'secondary'
-                                    ];
-                                    $statusText = [
-                                        'pending' => 'Menunggu',
-                                        'success' => 'Sukses',
-                                        'failed' => 'Gagal',
-                                        'cancelled' => 'Dibatalkan'
-                                    ];
-                                @endphp
-                                <span class="badge bg-{{ $statusColors[$transaction->status] ?? 'secondary' }}">
-                                    {{ $statusText[$transaction->status] ?? $transaction->status }}
-                                </span>
-                                @if($transaction->confirmed_by)
-                                    <br>
-                                    <small class="text-muted">Oleh: {{ $transaction->confirmer->name ?? '-' }}</small>
-                                @endif
-                            </td>
-                            <td>
-                                @if($transaction->tanggal_transaksi)
-                                    {{ \Carbon\Carbon::parse($transaction->tanggal_transaksi)->format('d/m/Y') }}
-                                    <br>
-                                    <small class="text-muted">{{ \Carbon\Carbon::parse($transaction->tanggal_transaksi)->format('H:i') }}</small>
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('admin.transactions.show', $transaction) }}" 
-                                       class="btn btn-outline-info" title="Lihat">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    
-                                    @if($transaction->status === 'pending')
-                                        @if($transaction->jenis_transaksi === 'payment' || $transaction->jenis_transaksi === 'penalty')
-                                            <button type="button" class="btn btn-outline-success" 
-                                                    onclick="approveTransaction({{ $transaction->id }})" title="Setujui">
-                                                <i class="fas fa-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger" 
-                                                    onclick="rejectTransaction({{ $transaction->id }})" title="Tolak">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                        @endif
-                                        
-                                        <a href="{{ route('admin.transactions.edit', $transaction) }}" 
-                                           class="btn btn-outline-warning" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        
-                                        <button type="button" class="btn btn-outline-secondary" 
-                                                onclick="cancelTransaction({{ $transaction->id }})" title="Batal">
-                                            <i class="fas fa-ban"></i>
-                                        </button>
-                                    @endif
-                                    
-                                    <button type="button" class="btn btn-outline-danger" 
-                                            onclick="deleteTransaction({{ $transaction->id }}, '{{ $transaction->kode_transaksi ?? 'TRX-'.$transaction->id }}')" 
-                                            title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="text-muted">
-                                    <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
-                                    <p class="mb-0">Belum ada transaksi</p>
-                                    <small>Klik "Buat Transaksi" untuk menambahkan data baru</small>
-                                </div>
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="d-flex justify-content-between align-items-center mt-3">
-                <div class="text-muted">
-                    Menampilkan {{ $transactions->firstItem() ?? 0 }} - {{ $transactions->lastItem() ?? 0 }} 
-                    dari {{ $transactions->total() }} transaksi
+            @else
+                <!-- Empty State -->
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-inbox fa-4x text-muted"></i>
+                    </div>
+                    <h5 class="text-muted mb-3">Belum ada transaksi denda</h5>
+                    <p class="text-muted mb-4">Belum ada transaksi denda yang tercatat.</p>
                 </div>
-                <div>
-                    {{ $transactions->appends(request()->query())->links() }}
-                </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+<!-- Modal Export -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exportModalLabel">
+                    <i class="fas fa-file-export me-2"></i>Export Data Transaksi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form action="{{ route('admin.transactions.export') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Format Export</label>
+                        <select class="form-select" name="format" required>
+                            <option value="excel">Excel (.xlsx)</option>
+                            <option value="pdf">PDF (.pdf)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tanggal Mulai</label>
+                            <input type="date" class="form-control" name="start_date">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tanggal Selesai</label>
+                            <input type="date" class="form-control" name="end_date" value="{{ date('Y-m-d') }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status Pembayaran</label>
+                        <select class="form-select" name="status_pembayaran">
+                            <option value="">Semua Status</option>
+                            <option value="lunas">Lunas</option>
+                            <option value="sebagian">Sebagian</option>
+                            <option value="belum_lunas">Belum Lunas</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>Download
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 @endsection
 
+@push('styles')
+<style>
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    height: 100%;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.stats-number {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 10px 0;
+    color: #2c3e50;
+}
+
+.stats-label {
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.stats-trend {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(58, 134, 255, 0.05);
+}
+
+.avatar-sm {
+    width: 36px;
+    height: 36px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 5px 10px;
+}
+
+.bg-opacity-10 {
+    --bs-bg-opacity: 0.1;
+}
+
+.dropdown-menu {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 10px;
+}
+
+.dropdown-item {
+    border-radius: 5px;
+    margin: 2px 5px;
+    width: calc(100% - 10px);
+}
+
+.dropdown-item:hover {
+    background-color: rgba(58, 134, 255, 0.1);
+}
+
+.card-header {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #eef2f7;
+    padding: 1rem 1.25rem;
+}
+
+.card-header .card-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.card {
+    border-radius: 12px;
+}
+</style>
+@endpush
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Approve transaction
-    function approveTransaction(id) {
-        Swal.fire({
-            title: 'Setujui Transaksi?',
-            text: "Transaksi akan disetujui.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Setujui',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `{{ url('admin/transactions') }}/${id}/approve`;
-                form.style.display = 'none';
-                
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = '_token';
-                csrfToken.value = '{{ csrf_token() }}';
-                form.appendChild(csrfToken);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
-    }
-    
-    // Reject transaction
-    function rejectTransaction(id) {
-        Swal.fire({
-            title: 'Tolak Transaksi?',
-            text: "Transaksi akan ditolak.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Tolak',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `{{ url('admin/transactions') }}/${id}/reject`;
-                form.style.display = 'none';
-                
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = '_token';
-                csrfToken.value = '{{ csrf_token() }}';
-                form.appendChild(csrfToken);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
-    }
-    
-    // Cancel transaction
-    function cancelTransaction(id) {
-        Swal.fire({
-            title: 'Batalkan Transaksi?',
-            text: "Transaksi akan dibatalkan.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#6c757d',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Batalkan',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `{{ url('admin/transactions') }}/${id}/cancel`;
-                form.style.display = 'none';
-                
-                const csrfToken = document.createElement('input');
-                csrfToken.type = 'hidden';
-                csrfToken.name = '_token';
-                csrfToken.value = '{{ csrf_token() }}';
-                form.appendChild(csrfToken);
-                
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
-    }
-    
     // Delete transaction
     function deleteTransaction(id, kode) {
         Swal.fire({
             title: 'Hapus Transaksi?',
-            html: `Transaksi <strong>${kode}</strong> akan dihapus permanen!<br>
+            html: `Transaksi <strong>#${kode}</strong> akan dihapus permanen!<br>
                   <small class="text-danger">Tindakan ini tidak dapat dibatalkan</small>`,
             icon: 'warning',
             showCancelButton: true,
@@ -432,64 +563,4 @@
         });
     @endif
 </script>
-
-<style>
-    .stats-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        height: 100%;
-        transition: transform 0.3s ease;
-        border: none;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-    
-    .stats-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-    
-    .stats-number {
-        font-size: 32px;
-        font-weight: 700;
-        margin: 10px 0;
-        color: #2c3e50;
-    }
-    
-    .stats-label {
-        color: #6c757d;
-        font-size: 14px;
-        margin-bottom: 10px;
-    }
-    
-    .btn-group .btn.active {
-        background-color: #3a86ff;
-        color: white;
-        border-color: #3a86ff;
-    }
-    
-    .table td, .table th {
-        vertical-align: middle;
-    }
-    
-    .badge {
-        font-weight: 500;
-        padding: 0.35em 0.65em;
-    }
-    
-    .fw-bold {
-        font-weight: 600 !important;
-    }
-</style>
 @endpush

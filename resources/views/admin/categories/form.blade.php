@@ -39,12 +39,6 @@
                                 <div class="form-control-plaintext">{{ $category->deskripsi ?? '-' }}</div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted">Jumlah Alat</label>
-                                <div class="form-control-plaintext">
-                                    <span class="badge bg-primary">{{ $category->laptops_count ?? 0 }}</span> alat
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
                                 <label class="form-label text-muted">Tanggal Dibuat</label>
                                 <div class="form-control-plaintext">{{ $category->created_at->format('d/m/Y H:i') }}</div>
                             </div>

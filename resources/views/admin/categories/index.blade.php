@@ -35,7 +35,6 @@
                             <th width="5%">#</th>
                             <th>Nama Kategori</th>
                             <th>Deskripsi</th>
-                            <th>Jumlah Alat</th>
                             <th>Tanggal Dibuat</th>
                             <th width="15%">Aksi</th>
                         </tr>
@@ -54,9 +53,6 @@
                             </td>
                             <td>
                                 {{ $category->deskripsi ? Str::limit($category->deskripsi, 50) : '-' }}
-                            </td>
-                            <td>
-                                <span class="badge bg-info">{{ $category->laptops_count ?? 0 }}</span> alat
                             </td>
                             <td>
                                 {{ $category->created_at->format('d/m/Y') }}

@@ -10,6 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <style>
         :root {
@@ -345,7 +346,7 @@
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.laporan') ? 'active' : '' }}" 
-                                   href="{{ route('admin.laporan') }}">
+                                   href="{{ route('admin.laporan.index') }}">
                                     <i class="fas fa-chart-bar"></i> Laporan
                                 </a>
                             </li>
@@ -368,12 +369,7 @@
                                     <i class="fas fa-hand-holding"></i> Peminjaman
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('petugas.pengembalian*') ? 'active' : '' }}" 
-                                   href="{{ route('petugas.pengembalian.index') }}">
-                                    <i class="fas fa-undo-alt"></i> Pengembalian
-                                </a>
-                            </li>
+                            
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('petugas.transaksi*') ? 'active' : '' }}" 
                                    href="{{ route('petugas.transaksi.index') }}">
@@ -475,10 +471,81 @@
         </div>
     @endif
 
+    {{-- Toast Notification Container --}}
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="toast-header">
+            <i class="fas fa-circle-info me-2" id="toastIcon"></i>
+            <strong class="me-auto" id="toastTitle">Notifikasi</strong>
+            <small>Baru saja</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            Pesan notifikasi
+        </div>
+    </div>
+</div>
+
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        // Function to show toast notification
+function showToast(message, type = 'success', title = null) {
+    const toastEl = document.getElementById('liveToast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    // Set icon and title based on type
+    switch(type) {
+        case 'success':
+            toastIcon.className = 'fas fa-check-circle me-2 text-success';
+            toastTitle.innerHTML = title || 'Berhasil!';
+            break;
+        case 'error':
+            toastIcon.className = 'fas fa-exclamation-circle me-2 text-danger';
+            toastTitle.innerHTML = title || 'Gagal!';
+            break;
+        case 'warning':
+            toastIcon.className = 'fas fa-exclamation-triangle me-2 text-warning';
+            toastTitle.innerHTML = title || 'Peringatan!';
+            break;
+        case 'info':
+            toastIcon.className = 'fas fa-info-circle me-2 text-info';
+            toastTitle.innerHTML = title || 'Informasi';
+            break;
+        default:
+            toastIcon.className = 'fas fa-circle-info me-2';
+            toastTitle.innerHTML = title || 'Notifikasi';
+    }
+    
+    toastMessage.innerHTML = message;
+    
+    const toast = new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: 5000
+    });
+    toast.show();
+}
+
+// Show session messages as toasts
+@if(session('success'))
+    showToast('{{ session('success') }}', 'success');
+@endif
+
+@if(session('error'))
+    showToast('{{ session('error') }}', 'error');
+@endif
+
+@if(session('warning'))
+    showToast('{{ session('warning') }}', 'warning');
+@endif
+
+@if(session('info'))
+    showToast('{{ session('info') }}', 'info');
+@endif
         document.getElementById('sidebarToggle')?.addEventListener('click', function() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');

@@ -1,429 +1,954 @@
 <?php
-/**
- * Peminjaman Controller (Petugas)
- * 
- * Controller ini bertanggung jawab untuk mengelola operasi terkait peminjaman laptop
- * dari sisi petugas. Meliputi menampilkan daftar peminjaman dengan berbagai filter,
- * mengupdate status peminjaman, serta menghapus data peminjaman dengan validasi yang tepat.
- * 
- * @package App\Http\Controllers\Petugas
- * @author Your Name
- * @since 1.0.0
- */
 
 namespace App\Http\Controllers\Petugas;
 
 use App\Http\Controllers\Controller;
 use App\Models\Peminjaman;
 use App\Models\Laptop;
+use App\Models\User;
+use App\Models\TransaksiDenda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Carbon\Carbon;
 
 class PeminjamanController extends Controller
 {
-    /**
-     * Menampilkan daftar peminjaman dengan berbagai filter.
-     * 
-     * Method ini menampilkan data peminjaman yang dapat difilter berdasarkan:
-     * - Status peminjaman (pending, approved, ditolak, selesai, aktif, batal)
-     * - Rentang tanggal peminjaman (tanggal_mulai - tanggal_selesai)
-     * - Nama atau email peminjam
-     * 
-     * Juga menampilkan statistik ringkasan:
-     * - Total peminjaman
-     * - Peminjaman disetujui
-     * - Peminjaman menunggu
-     * - Peminjaman ditolak
-     * 
-     * Method ini hanya dapat diakses oleh user dengan role 'petugas'.
-     * 
-     * @param Request $request Objek request yang berisi parameter filter
-     * @return View View daftar peminjaman dengan data peminjaman dan statistik
-     * 
-     * @throws \Symfony\Component\HttpKernel\Exception\HttpException Jika role bukan petugas (403)
-     * 
-     * @example
-     * GET /petugas/peminjaman?status=pending&tanggal_mulai=2024-01-01&peminjam=john
-     */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
-        /**
-         * Inisialisasi query dengan eager loading relasi user dan laptop
-         * Diurutkan berdasarkan waktu pembuatan terbaru
-         * 
-         * Catatan: Relasi 'tool' telah diubah menjadi 'laptop' sesuai dengan
-         * struktur database aplikasi peminjaman laptop
-         */
-        $query = Peminjaman::with(['user', 'laptop'])
-            ->orderBy('created_at', 'desc');
-
-        // ========== FILTER BERDASARKAN STATUS ==========
-        /**
-         * Filter status peminjaman
-         * Nilai yang valid: pending, approved, ditolak, selesai, aktif, batal
-         */
-        if ($request->has('status') && $request->status) {
+        $query = Peminjaman::with(['user', 'laptop']);
+        
+        // Filter status
+        if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-
-        // ========== FILTER BERDASARKAN TANGGAL ==========
-        /**
-         * Filter tanggal mulai peminjaman
-         * Menampilkan peminjaman dengan tanggal pinjam >= tanggal_mulai
-         */
-        if ($request->has('tanggal_mulai') && $request->tanggal_mulai) {
+        
+        // Filter tanggal
+        if ($request->filled('tanggal_mulai')) {
             $query->whereDate('tanggal_pinjam', '>=', $request->tanggal_mulai);
         }
-
-        /**
-         * Filter tanggal selesai peminjaman
-         * Menampilkan peminjaman dengan tanggal pinjam <= tanggal_selesai
-         */
-        if ($request->has('tanggal_selesai') && $request->tanggal_selesai) {
+        if ($request->filled('tanggal_selesai')) {
             $query->whereDate('tanggal_pinjam', '<=', $request->tanggal_selesai);
         }
-
-        // ========== FILTER BERDASARKAN PEMINJAM ==========
-        /**
-         * Filter berdasarkan nama atau email peminjam
-         * Menggunakan whereHas untuk mencari di relasi user
-         * Pencarian bersifat partial (LIKE %keyword%)
-         */
-        if ($request->has('peminjam') && $request->peminjam) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->peminjam . '%')
-                  ->orWhere('email', 'like', '%' . $request->peminjam . '%');
+        
+        // Filter pencarian
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('laptop', function($q2) use ($search) {
+                      $q2->where('merk', 'like', "%{$search}%")
+                         ->orWhere('model', 'like', "%{$search}%");
+                  });
             });
         }
-
-        /**
-         * Mengambil data peminjaman dengan pagination 10 data per halaman
-         * 
-         * @var \Illuminate\Pagination\LengthAwarePaginator $peminjaman
-         */
-        $peminjaman = $query->paginate(10);
-
-        // ========== STATISTIK RINGKASAN ==========
         
-        /**
-         * Total seluruh peminjaman dalam sistem
-         */
-        $totalPeminjaman = Peminjaman::count();
+        $peminjaman = $query->orderBy('created_at', 'desc')->paginate(10);
         
-        /**
-         * Jumlah peminjaman yang telah disetujui
-         */
-        $peminjamanDisetujui = Peminjaman::where('status', 'approved')->count();
+        $statistics = [
+            'total' => Peminjaman::count(),
+            'pending' => Peminjaman::where('status', 'pending')->count(),
+            'active' => Peminjaman::whereIn('status', ['approved', 'aktif'])->whereNull('tanggal_kembali')->count(),
+            'returned' => Peminjaman::where('status', 'selesai')->count(),
+        ];
         
-        /**
-         * Jumlah peminjaman yang masih menunggu persetujuan
-         */
-        $peminjamanMenunggu = Peminjaman::where('status', 'pending')->count();
-        
-        /**
-         * Jumlah peminjaman yang ditolak
-         */
-        $peminjamanDitolak = Peminjaman::where('status', 'ditolak')->count();
-
-        // Kirim data ke view
-        return view('petugas.peminjaman.index', compact(
-            'peminjaman',
-            'totalPeminjaman',
-            'peminjamanDisetujui',
-            'peminjamanMenunggu',
-            'peminjamanDitolak'
-        ));
+        return view('petugas.peminjaman.index', compact('peminjaman', 'statistics'));
     }
-    
-    /**
-     * Mengupdate status peminjaman.
-     * 
-     * Method ini mengubah status peminjaman dan menangani perubahan status laptop
-     * yang terkait. Operasi dilakukan dalam transaksi database untuk menjaga
-     * konsistensi data antara peminjaman dan laptop.
-     * 
-     * Status yang dapat diupdate:
-     * - pending -> approved / ditolak / batal
-     * - approved -> selesai / batal
-     * - aktif -> selesai / batal
-     * 
-     * Method ini juga menangani update status laptop:
-     * - Jika status menjadi 'approved': laptop diubah menjadi 'dipinjam'
-     * - Jika status menjadi 'ditolak', 'selesai', atau 'batal': laptop diubah menjadi 'tersedia'
-     * 
-     * Method ini hanya dapat diakses oleh user dengan role 'petugas'.
-     * 
-     * @param Request $request Objek request yang berisi status baru dan catatan
-     * @param int|string $id ID peminjaman yang akan diupdate statusnya
-     * @return RedirectResponse Redirect ke halaman daftar peminjaman dengan pesan sukses/error
-     * 
-     * @throws \Symfony\Component\HttpKernel\Exception\HttpException Jika role bukan petugas (403)
-     * @throws \Illuminate\Validation\ValidationException Jika validasi gagal
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
-     * @throws \Exception Jika terjadi error saat update data
-     */
-    public function updateStatus(Request $request, $id): RedirectResponse
+
+    public function create()
     {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
+        $laptops = Laptop::where('status', 'tersedia')->get();
+        $users = User::where('role', 'user')->get();
+        return view('petugas.peminjaman.form', compact('laptops', 'users'));
+    }
 
-        // Ambil data peminjaman dengan relasi laptop
-        $peminjaman = Peminjaman::with('laptop')->findOrFail($id);
-
-        // Validasi input status dan catatan
-        $validated = $request->validate([
-            'status' => 'required|in:pending,approved,ditolak,selesai,aktif,batal',
-            'catatan' => 'nullable|string|max:500',
-            'alasan_ditolak' => 'nullable|string|max:500',
+    public function store(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'laptop_id' => 'required|exists:laptops,id',
+            'tanggal_pinjam' => 'required|date',
+            'tanggal_kembali_rencana' => 'required|date|after:tanggal_pinjam',
+            'tujuan' => 'required|in:meeting,presentasi,training,work_from_home,proyek,lainnya',
+            'keterangan' => 'nullable|string'
         ]);
 
-        try {
-            // Memulai transaksi database
-            DB::beginTransaction();
-
-            $newStatus = $validated['status'];
-
-            // Siapkan data yang akan diupdate
-            $updateData = [
-                'status' => $newStatus,
-                'approved_by' => auth()->id(),
-            ];
-
-            /**
-             * Penanganan khusus berdasarkan status baru:
-             * - approved: catat waktu persetujuan
-             * - ditolak: simpan alasan penolakan
-             */
-            if ($newStatus == 'approved') {
-                $updateData['waktu_approve'] = now();
-            } elseif ($newStatus == 'ditolak') {
-                $updateData['alasan_ditolak'] = $validated['alasan_ditolak'];
-            }
-
-            // Update status peminjaman
-            $peminjaman->update($updateData);
-
-            /**
-             * Update status laptop berdasarkan status peminjaman
-             * - approved: laptop menjadi dipinjam
-             * - ditolak/selesai/batal: laptop kembali tersedia
-             */
-            if ($peminjaman->laptop) {
-                $laptop = $peminjaman->laptop;
-                
-                if ($newStatus == 'approved') {
-                    $laptop->status = 'dipinjam';
-                } elseif (in_array($newStatus, ['ditolak', 'selesai', 'batal'])) {
-                    $laptop->status = 'tersedia';
-                }
-                $laptop->save();
-            }
-
-            // Commit transaksi jika semua operasi berhasil
-            DB::commit();
-
-            return redirect()->route('petugas.peminjaman.index')
-                ->with('success', 'Status peminjaman berhasil diperbarui.');
-
-        } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
-            DB::rollBack();
-            return back()->with('error', 'Gagal memperbarui status: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Menampilkan detail peminjaman (helper method).
-     * 
-     * Method ini dapat ditambahkan untuk melihat detail peminjaman
-     * secara lengkap.
-     * 
-     * @param int|string $id ID peminjaman yang akan ditampilkan
-     * @return View View detail peminjaman
-     */
-    public function show($id): View
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
-        // Ambil data peminjaman dengan relasi lengkap
-        $peminjaman = Peminjaman::with(['user', 'laptop', 'approver'])
-            ->findOrFail($id);
+        DB::beginTransaction();
         
-        return view('petugas.peminjaman.show', compact('peminjaman'));
-    }
-
-    /**
-     * Menampilkan form edit peminjaman (helper method).
-     * 
-     * Method ini dapat ditambahkan untuk mengedit data peminjaman
-     * jika diperlukan.
-     * 
-     * @param int|string $id ID peminjaman yang akan diedit
-     * @return View View form edit peminjaman
-     */
-    public function edit($id): View
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
-        $peminjaman = Peminjaman::findOrFail($id);
-        
-        return view('petugas.peminjaman.edit', compact('peminjaman'));
-    }
-
-    /**
-     * Menghapus data peminjaman.
-     * 
-     * Method ini menghapus data peminjaman dengan validasi:
-     * - Jika peminjaman memiliki denda belum lunas, penghapusan ditolak
-     * - Jika peminjaman masih aktif, status laptop dikembalikan menjadi tersedia
-     * - Menghapus transaksi denda terkait jika ada
-     * 
-     * Operasi dilakukan dalam transaksi database untuk menjaga konsistensi data.
-     * 
-     * Method ini hanya dapat diakses oleh user dengan role 'petugas'.
-     * 
-     * @param int|string $id ID peminjaman yang akan dihapus
-     * @return RedirectResponse Redirect ke halaman daftar peminjaman dengan pesan sukses/error
-     * 
-     * @throws \Symfony\Component\HttpKernel\Exception\HttpException Jika role bukan petugas (403)
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException Jika ID tidak ditemukan
-     * @throws \Exception Jika peminjaman memiliki denda belum lunas
-     */
-    public function destroy($id): RedirectResponse
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
         try {
-            // Memulai transaksi database
-            DB::beginTransaction();
-            
-            // Ambil data peminjaman dengan relasi laptop
-            $peminjaman = Peminjaman::with('laptop')->findOrFail($id);
-            
-            /**
-             * Validasi: Cek apakah ada transaksi denda terkait yang belum lunas
-             * Jika ada, penghapusan ditolak untuk menjaga integritas data keuangan
-             */
-            $transaksiDenda = \App\Models\TransaksiDenda::where('peminjaman_id', $id)->first();
-            if ($transaksiDenda && $transaksiDenda->status_pembayaran != 'lunas') {
-                throw new \Exception('Tidak dapat menghapus peminjaman yang memiliki denda belum lunas.');
+            $laptop = Laptop::findOrFail($request->laptop_id);
+            if ($laptop->status !== 'tersedia') {
+                return redirect()->back()->with('error', 'Laptop sedang tidak tersedia');
             }
             
-            /**
-             * Jika peminjaman masih aktif (status approved/aktif dan belum dikembalikan),
-             * kembalikan status laptop menjadi tersedia
-             */
-            if (in_array($peminjaman->status, ['approved', 'aktif']) && !$peminjaman->tanggal_kembali) {
-                if ($peminjaman->laptop) {
-                    $peminjaman->laptop->update(['status' => 'tersedia']);
-                }
-            }
+            $tanggal_pinjam = Carbon::parse($request->tanggal_pinjam);
+            $tanggal_kembali = Carbon::parse($request->tanggal_kembali_rencana);
+            $lama_hari = max($tanggal_pinjam->diffInDays($tanggal_kembali), 1);
+            $harga_sewa = ($laptop->harga_sewa_harian ?? 50000) * $lama_hari;
             
-            // Hapus transaksi denda terkait jika ada
-            if ($transaksiDenda) {
-                $transaksiDenda->delete();
-            }
-            
-            // Hapus data peminjaman
-            $peminjaman->delete();
-            
-            // Commit transaksi jika semua operasi berhasil
-            DB::commit();
-            
-            return redirect('/petugas/peminjaman')
-                ->with('success', 'Data peminjaman berhasil dihapus.');
-                
-        } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi error
-            DB::rollBack();
-            return redirect('/petugas/peminjaman')
-                ->with('error', 'Gagal menghapus peminjaman: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Membatalkan peminjaman (helper method).
-     * 
-     * Method ini dapat ditambahkan untuk membatalkan peminjaman
-     * tanpa perlu menghapus data.
-     * 
-     * @param int|string $id ID peminjaman yang akan dibatalkan
-     * @return RedirectResponse Redirect ke halaman daftar peminjaman
-     */
-    public function cancel($id): RedirectResponse
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-
-        try {
-            DB::beginTransaction();
-            
-            $peminjaman = Peminjaman::with('laptop')->findOrFail($id);
-            
-            // Hanya peminjaman dengan status pending yang bisa dibatalkan
-            if ($peminjaman->status !== 'pending') {
-                throw new \Exception('Hanya peminjaman dengan status pending yang dapat dibatalkan.');
-            }
-            
-            $peminjaman->update([
-                'status' => 'batal',
-                'approved_by' => auth()->id(),
+            $peminjaman = Peminjaman::create([
+                'user_id' => $request->user_id,
+                'laptop_id' => $request->laptop_id,
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'tanggal_kembali_rencana' => $request->tanggal_kembali_rencana,
+                'lama_hari' => $lama_hari,
+                'harga_sewa' => $harga_sewa,
+                'tujuan' => $request->tujuan,
+                'keterangan' => $request->keterangan,
+                'status' => 'pending'
             ]);
             
             DB::commit();
             
             return redirect()->route('petugas.peminjaman.index')
-                ->with('success', 'Peminjaman berhasil dibatalkan.');
+                ->with('success', 'Peminjaman berhasil ditambahkan');
                 
         } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal membatalkan peminjaman: ' . $e->getMessage());
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal menambah peminjaman: ' . $e->getMessage());
         }
     }
+
+    public function show($id)
+    {
+        $peminjaman = Peminjaman::with(['user', 'laptop'])->findOrFail($id);
+        return view('petugas.peminjaman.show', compact('peminjaman'));
+    }
+
+    public function edit($id)
+    {
+        $peminjaman = Peminjaman::findOrFail($id);
+        
+        if (!in_array($peminjaman->status, ['pending', 'ditolak'])) {
+            return redirect()->route('petugas.peminjaman.index')
+                ->with('error', 'Peminjaman yang sudah diproses tidak dapat diedit');
+        }
+        
+        $laptops = Laptop::where('status', 'tersedia')->get();
+        $users = User::where('role', 'user')->get();
+        return view('petugas.peminjaman.form', compact('peminjaman', 'laptops', 'users'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'laptop_id' => 'required|exists:laptops,id',
+            'tanggal_pinjam' => 'required|date',
+            'tanggal_kembali_rencana' => 'required|date|after:tanggal_pinjam',
+            'tujuan' => 'required|in:meeting,presentasi,training,work_from_home,proyek,lainnya',
+            'keterangan' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+        
+        try {
+            $peminjaman = Peminjaman::findOrFail($id);
+            
+            if (!in_array($peminjaman->status, ['pending', 'ditolak'])) {
+                throw new \Exception('Peminjaman yang sudah diproses tidak dapat diedit');
+            }
+            
+            $laptop = Laptop::findOrFail($request->laptop_id);
+            
+            $tanggal_pinjam = Carbon::parse($request->tanggal_pinjam);
+            $tanggal_kembali = Carbon::parse($request->tanggal_kembali_rencana);
+            $lama_hari = max($tanggal_pinjam->diffInDays($tanggal_kembali), 1);
+            $harga_sewa = ($laptop->harga_sewa_harian ?? 50000) * $lama_hari;
+            
+            $peminjaman->update([
+                'user_id' => $request->user_id,
+                'laptop_id' => $request->laptop_id,
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'tanggal_kembali_rencana' => $request->tanggal_kembali_rencana,
+                'lama_hari' => $lama_hari,
+                'harga_sewa' => $harga_sewa,
+                'tujuan' => $request->tujuan,
+                'keterangan' => $request->keterangan
+            ]);
+            
+            DB::commit();
+            
+            return redirect()->route('petugas.peminjaman.index')
+                ->with('success', 'Peminjaman berhasil diupdate');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal mengupdate peminjaman: ' . $e->getMessage());
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $peminjaman = Peminjaman::findOrFail($id);
+            
+            // Hanya bisa hapus jika status pending, ditolak, atau selesai
+            if (in_array($peminjaman->status, ['pending', 'ditolak', 'selesai'])) {
+                $peminjaman->delete();
+                return redirect()->route('petugas.peminjaman.index')
+                    ->with('success', 'Peminjaman berhasil dihapus');
+            }
+            
+            return redirect()->route('petugas.peminjaman.index')
+                ->with('error', 'Peminjaman dengan status "' . $peminjaman->status . '" tidak dapat dihapus');
+                
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus peminjaman: ' . $e->getMessage());
+        }
+    }
+
+    public function getData($id)
+    {
+        try {
+            $peminjaman = Peminjaman::with(['user', 'laptop'])->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $peminjaman->id,
+                    'kode_peminjaman' => 'PINJ-' . date('Ymd', strtotime($peminjaman->created_at)) . '-' . str_pad($peminjaman->id, 4, '0', STR_PAD_LEFT),
+                    'peminjam' => $peminjaman->user->name ?? '-',
+                    'laptop' => $peminjaman->laptop ? ($peminjaman->laptop->merk . ' ' . $peminjaman->laptop->model) : '-',
+                    'harga_sewa' => $peminjaman->harga_sewa ?? 0,
+                    'tanggal_pinjam' => $peminjaman->tanggal_pinjam ? Carbon::parse($peminjaman->tanggal_pinjam)->format('d/m/Y') : null,
+                    'tanggal_kembali_rencana' => $peminjaman->tanggal_kembali_rencana ? Carbon::parse($peminjaman->tanggal_kembali_rencana)->format('d/m/Y') : null,
+                    'status' => $peminjaman->status
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan'
+            ], 404);
+        }
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,approved,ditolak',
+            'alasan_ditolak' => 'required_if:status,ditolak|nullable|string'
+        ]);
+
+        DB::beginTransaction();
+        
+        try {
+            $peminjaman = Peminjaman::findOrFail($id);
+            
+            $peminjaman->update([
+                'status' => $request->status,
+                'approved_by' => auth()->id(),
+                'waktu_approve' => now()
+            ]);
+            
+            if ($request->status == 'ditolak' && $request->filled('alasan_ditolak')) {
+                $peminjaman->update(['alasan_ditolak' => $request->alasan_ditolak]);
+                Laptop::where('id', $peminjaman->laptop_id)->update(['status' => 'tersedia']);
+            } elseif ($request->status == 'approved') {
+                Laptop::where('id', $peminjaman->laptop_id)->update(['status' => 'dipinjam']);
+            }
+            
+            DB::commit();
+            
+            return response()->json(['success' => true]);
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+/**
+ * Proses pengembalian oleh petugas - bisa kapan saja
+ */
+public function prosesPengembalian(Request $request)
+{
+    $request->validate([
+        'peminjaman_id' => 'required|exists:peminjaman,id',
+        'tanggal_kembali' => 'required|date',
+        'kondisi_alat' => 'required|in:baik,rusak_ringan,rusak_berat,hilang',
+        'keterangan_rusak' => 'nullable|string',
+        'catatan' => 'nullable|string',
+        // Pembayaran denda opsional (bisa dibayar nanti via menu Transaksi)
+        'metode_pembayaran' => 'nullable|string',
+        'jumlah_bayar' => 'nullable|numeric|min:0'
+    ]);
+
+    DB::beginTransaction();
+    
+    try {
+        $peminjaman = Peminjaman::with(['user', 'laptop'])->findOrFail($request->peminjaman_id);
+        
+        // ✅ Bisa diproses jika status approved/aktif (tidak peduli tanggal)
+        if (!in_array($peminjaman->status, ['approved', 'aktif'])) {
+            throw new \Exception('Peminjaman tidak dalam status yang dapat dikembalikan. Status: ' . $peminjaman->status);
+        }
+        
+        $tanggal_kembali = Carbon::parse($request->tanggal_kembali);
+        $tanggal_rencana = Carbon::parse($peminjaman->tanggal_kembali_rencana);
+        
+        // ===== HITUNG DENDA KETERLAMBATAN =====
+        $denda_telat = 0;
+        $telat_hari = 0;
+        
+        // ✅ Hitung denda hanya jika kembali LEBAT dari rencana
+        if ($tanggal_kembali->gt($tanggal_rencana)) {
+            $telat_hari = $tanggal_kembali->diffInDays($tanggal_rencana);
+            $denda_telat = $telat_hari * 10000; // Rp 10.000/hari
+        }
+        
+        // ===== HITUNG DENDA KERUSAKAN / HILANG =====
+        $denda_kerusakan = 0;
+        $keterangan_kerusakan = '';
+        
+        switch ($request->kondisi_alat) {
+            case 'rusak_ringan':
+                $denda_kerusakan = $peminjaman->harga_sewa * 0.5;
+                $keterangan_kerusakan = 'Rusak Ringan (50% dari harga sewa)';
+                break;
+            case 'rusak_berat':
+                $denda_kerusakan = $peminjaman->harga_sewa;
+                $keterangan_kerusakan = 'Rusak Berat (100% dari harga sewa)';
+                break;
+            case 'hilang':
+                // ✅ Denda hilang = 100% harga laptop (bisa disesuaikan)
+                $denda_kerusakan = $peminjaman->laptop->harga_beli ?? ($peminjaman->harga_sewa * 10);
+                $keterangan_kerusakan = 'HILANG - Ganti rugi 100% harga laptop';
+                break;
+            case 'baik':
+            default:
+                // Tidak ada denda kerusakan
+                break;
+        }
+        
+        $total_denda = $denda_telat + $denda_kerusakan;
+        $total_tagihan = $peminjaman->harga_sewa + $total_denda;
+        
+        // ===== CATATAN PENGEMBALIAN =====
+        $catatan = "Kondisi: {$request->kondisi_alat}";
+        if ($request->keterangan_rusak) {
+            $catatan .= " | Detail: {$request->keterangan_rusak}";
+        }
+        if ($request->catatan) {
+            $catatan .= " | Catatan: {$request->catatan}";
+        }
+        if ($telat_hari > 0) {
+            $catatan .= " | Terlambat: {$telat_hari} hari";
+        }
+        
+        // ===== UPDATE PEMINJAMAN =====
+        $peminjaman->update([
+            'tanggal_kembali' => $request->tanggal_kembali,
+            'catatan_pengembalian' => $catatan,
+            'denda' => $total_denda,
+            'total_tagihan' => $total_tagihan,
+            // Mark denda dibayar hanya jika user bayar lunas saat ini
+            'is_denda_dibayar' => $total_denda > 0 && $request->jumlah_bayar >= $total_denda ? 1 : 0,
+            'status' => 'selesai',
+            'waktu_pengembalian' => now()
+        ]);
+        
+        // ===== BUAT TRANSAKSI DENDA JIKA ADA =====
+        $transaksi = null;
+        if ($total_denda > 0) {
+            $transaksi = TransaksiDenda::create([
+                'peminjaman_id' => $peminjaman->id,
+                'user_id' => $peminjaman->user_id,
+                'jumlah_denda' => $total_denda,
+                'jumlah_dibayar' => $request->jumlah_bayar > 0 ? min($request->jumlah_bayar, $total_denda) : 0,
+                'metode_pembayaran' => $request->metode_pembayaran ?? null,
+                'status' => $request->jumlah_bayar >= $total_denda ? 'lunas' : 'belum_bayar',
+                'tanggal_bayar' => $request->jumlah_bayar > 0 ? now() : null,
+                'petugas_id' => auth()->id(),
+                'keterangan' => trim("Telat: {$telat_hari} hari, " . ($keterangan_kerusakan ?: 'Tidak ada kerusakan'))
+            ]);
+        }
+        
+        // ===== UPDATE STATUS LAPTOP =====
+        $laptop = $peminjaman->laptop;
+        if ($laptop) {
+            if ($request->kondisi_alat == 'hilang') {
+                // Laptop hilang → status non-aktif
+                $laptop->update(['status' => 'hilang']);
+            } elseif ($request->kondisi_alat == 'baik') {
+                $laptop->update(['status' => 'tersedia']);
+            } else {
+                $laptop->update(['status' => 'perbaikan']);
+            }
+        }
+        
+$peminjaman->user->update(['status' => 'active']); 
+        
+        DB::commit();
+        
+        // Generate struk untuk response
+        $strukHtml = $this->generateStruk($peminjaman, $request, $telat_hari, $denda_telat, $denda_kerusakan, $total_tagihan, $keterangan_kerusakan);
+        
+        $message = 'Pengembalian berhasil diproses';
+        if ($total_denda > 0) {
+            $sisa = $total_denda - ($request->jumlah_bayar ?? 0);
+            if ($sisa > 0) {
+                $message .= ". Tersisa denda Rp " . number_format($sisa, 0, ',', '.') . " - silakan lunasi di menu Transaksi.";
+            } else {
+                $message .= ". Denda telah lunas.";
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'struk_html' => $strukHtml,
+            'transaksi_id' => $transaksi?->id
+        ]);
+            
+    } catch (\Exception $e) {
+        DB::rollback();
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal memproses pengembalian: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    
+    private function generateStruk($peminjaman, $request, $telat_hari, $denda_telat, $denda_kerusakan, $total_tagihan, $keterangan_kerusakan)
+    {
+        $statusBayar = $request->jumlah_bayar >= $total_tagihan ? 'LUNAS' : 'BELUM LUNAS';
+        $kodePeminjaman = 'PINJ-' . date('Ymd', strtotime($peminjaman->created_at)) . '-' . str_pad($peminjaman->id, 4, '0', STR_PAD_LEFT);
+        
+        $html = '<div class="text-center mb-3">
+            <h4>STRUK PENGEMBALIAN</h4>
+            <small>' . date('d/m/Y H:i:s') . '</small>
+        </div>
+        <hr>
+        <table class="table table-sm table-borderless">
+            <tr><td width="40%">ID Peminjaman</td><td><strong>#' . $peminjaman->id . '</strong></td></tr>
+            <tr><td>Kode Peminjaman</td><td><strong>' . $kodePeminjaman . '</strong></td></tr>
+            <tr><td>Peminjam</td><td><strong>' . ($peminjaman->user->name ?? '-') . '</strong></td></tr>
+            <tr><td>Laptop</td><td><strong>' . ($peminjaman->laptop->merk ?? '') . ' ' . ($peminjaman->laptop->model ?? '-') . '</strong></td></tr>
+            <tr><td>Tanggal Pinjam</td><td>' . Carbon::parse($peminjaman->tanggal_pinjam)->format('d/m/Y') . '</td></tr>
+            <tr><td>Tanggal Kembali</td><td>' . Carbon::parse($request->tanggal_kembali)->format('d/m/Y') . '</td></tr>
+        </table>
+        <hr>
+        <table class="table table-sm">
+            <tr><td>Harga Sewa</td><td class="text-end">Rp ' . number_format($peminjaman->harga_sewa, 0, ',', '.') . '</td></tr>';
+        
+        if ($denda_telat > 0) {
+            $html .= '<tr><td>Denda Keterlambatan (' . $telat_hari . ' hari)</td><td class="text-end">Rp ' . number_format($denda_telat, 0, ',', '.') . '</td></tr>';
+        }
+        
+        if ($denda_kerusakan > 0) {
+            $html .= '<tr><td>Denda Kerusakan</td><td class="text-end">Rp ' . number_format($denda_kerusakan, 0, ',', '.') . '</td></tr>';
+            if ($keterangan_kerusakan) {
+                $html .= '<tr><td colspan="2"><small class="text-muted">' . $keterangan_kerusakan . '</small></td></tr>';
+            }
+        }
+        
+        $html .= '<tr class="border-top"><td><strong>TOTAL</strong></td><td class="text-end"><strong>Rp ' . number_format($total_tagihan, 0, ',', '.') . '</strong></td></tr>
+            <tr><td>Status Pembayaran</td><td class="text-end"><span class="badge bg-' . ($statusBayar == 'LUNAS' ? 'success' : 'warning') . '">' . $statusBayar . '</span></td></tr>
+        </table>
+        <hr>
+        <div class="text-center text-muted small">
+            <i class="fas fa-check-circle text-success"></i> Terima kasih telah mengembalikan laptop<br>
+            Simpan struk ini sebagai bukti pengembalian
+        </div>';
+        
+        return $html;
+    }
+
+public function approve($id)
+{
+    DB::beginTransaction();
+    try {
+        $peminjaman = Peminjaman::findOrFail($id);
+        
+        if ($peminjaman->status != 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Peminjaman sudah diproses'
+            ], 400);
+        }
+        
+        $laptop = Laptop::findOrFail($peminjaman->laptop_id);
+        
+        if ($laptop->status != 'tersedia') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Laptop sedang tidak tersedia. Status saat ini: ' . $laptop->status
+            ], 400);
+        }
+        
+        // Update status peminjaman
+        $peminjaman->update([
+            'status' => 'approved',  // ← Status ini
+            'approved_by' => auth()->id(),
+            'waktu_approve' => now()
+        ]);
+        
+        // Update status laptop
+        $laptop->update(['status' => 'dipinjam']);
+        
+        DB::commit();
+        
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Peminjaman berhasil disetujui!'
+        ]);
+        
+    } catch (\Exception $e) {
+        DB::rollback();
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    
+public function reject(Request $request, $id)
+{
+    $request->validate([
+        'alasan_ditolak' => 'required|string|min:5'
+    ]);
+    
+    DB::beginTransaction();
+    try {
+        $peminjaman = Peminjaman::findOrFail($id);
+        
+        if ($peminjaman->status != 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Peminjaman sudah diproses'
+            ], 400);
+        }
+        
+        // Update status peminjaman
+        $peminjaman->update([
+            'status' => 'ditolak',  // ← Status ini
+            'alasan_ditolak' => $request->alasan_ditolak,
+            'approved_by' => auth()->id(),
+            'waktu_approve' => now()
+        ]);
+        
+        // Kembalikan status laptop
+        Laptop::where('id', $peminjaman->laptop_id)->update(['status' => 'tersedia']);
+        
+        DB::commit();
+        
+        return response()->json([
+            'success' => true,
+            'message' => '❌ Peminjaman ditolak.'
+        ]);
+        
+    } catch (\Exception $e) {
+        DB::rollback();
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    
+public function confirmPickup($id)
+{
+    DB::beginTransaction();
+    try {
+        $peminjaman = Peminjaman::findOrFail($id);
+        
+        if ($peminjaman->status != 'approved') {
+            return response()->json(['success' => false, 'message' => 'Peminjaman belum disetujui'], 400);
+        }
+        
+        $peminjaman->update([
+            'status' => 'aktif',
+            'waktu_diambil' => now()
+        ]);
+        
+        // ✅ PERBAIKAN: Gunakan 'active' bukan 'aktif'
+        $peminjaman->user->update(['status' => 'active']);
+        
+        DB::commit();
+        
+        return response()->json([
+            'success' => true,
+            'message' => '📦 Pengambilan laptop dikonfirmasi.'
+        ]);
+        
+    } catch (\Exception $e) {
+        DB::rollback();
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
 
     /**
-     * Menampilkan riwayat peminjaman user tertentu (helper method).
-     * 
-     * Method ini dapat ditambahkan untuk melihat riwayat peminjaman
-     * dari user tertentu.
-     * 
-     * @param int $userId ID user yang akan dilihat riwayatnya
-     * @return View View riwayat peminjaman user
+     * Show form pengembalian
      */
-    public function userHistory($userId): View
+    public function showReturnForm($id)
     {
-        // Otorisasi: Hanya petugas yang dapat mengakses
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
+        $peminjaman = Peminjaman::with(['user', 'laptop'])->findOrFail($id);
+        
+        // Cek apakah bisa dikembalikan
+        if (!in_array($peminjaman->status, ['approved', 'aktif'])) {
+            return redirect()->route('petugas.peminjaman.index')
+                ->with('error', 'Peminjaman tidak dapat dikembalikan karena status: ' . $peminjaman->status);
         }
-
-        $peminjaman = Peminjaman::with(['user', 'laptop'])
-            ->where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
         
-        $user = \App\Models\User::findOrFail($userId);
-        
-        return view('petugas.peminjaman.user-history', compact('peminjaman', 'user'));
+        return view('petugas.peminjaman.pengembalian', compact('peminjaman'));
     }
+
+
+public function prosesTransaksi(Request $request, $id)
+{
+    $request->validate([
+        'tanggal_kembali' => 'required|date',
+        'kondisi' => 'required|in:baik,rusak_ringan,rusak_berat,hilang',
+        'catatan' => 'nullable|string',
+        'jumlah_bayar' => 'nullable|numeric|min:0',
+        'metode_pembayaran' => 'nullable|in:tunai,transfer,qris'
+    ]);
+
+    DB::beginTransaction();
+    
+    try {
+        $peminjaman = Peminjaman::with(['user', 'laptop'])->findOrFail($id);
+        
+        if (!in_array($peminjaman->status, ['approved', 'aktif'])) {
+            throw new \Exception('Status peminjaman tidak valid: ' . $peminjaman->status);
+        }
+        
+        // ============================================================
+        // 1. AMBIL HARGA SEWA PER HARI DARI TABEL LAPTOPS
+        // ============================================================
+        $hargaSewaPerHari = $peminjaman->laptop->harga_sewa_harian ?? 50000;
+        
+        // ============================================================
+        // 2. HITUNG LAMA PEMINJAMAN (jumlah hari pinjam)
+        // ============================================================
+        $tanggalPinjam = Carbon::parse($peminjaman->tanggal_pinjam);
+        $tanggalRencana = Carbon::parse($peminjaman->tanggal_kembali_rencana);
+        $lamaHari = max(1, $tanggalPinjam->diffInDays($tanggalRencana));
+        
+        // ============================================================
+        // 3. HITUNG TOTAL BIAYA SEWA (harga_per_hari × lama_hari)
+        // ============================================================
+        $totalBiayaSewa = $hargaSewaPerHari * $lamaHari;
+        
+        // ============================================================
+        // 4. HITUNG DENDA KETERLAMBATAN
+        // ============================================================
+        $tanggalKembali = Carbon::parse($request->tanggal_kembali);
+        $hariTerlambat = 0;
+        $dendaTelat = 0;
+        
+        if ($tanggalKembali->gt($tanggalRencana)) {
+            $hariTerlambat = $tanggalKembali->diffInDays($tanggalRencana);
+            $dendaTelat = $hariTerlambat * 10000; // Rp 10.000 per hari
+        }
+        
+        // ============================================================
+        // 5. HITUNG DENDA KERUSAKAN (berdasarkan kondisi)
+        // ============================================================
+        $dendaKerusakan = 0;
+        $persenDenda = 0;
+        
+        switch ($request->kondisi) {
+            case 'rusak_ringan':
+                $dendaKerusakan = $totalBiayaSewa * 0.5;  // 50% dari total biaya sewa
+                $persenDenda = 50;
+                break;
+            case 'rusak_berat':
+                $dendaKerusakan = $totalBiayaSewa;       // 100% dari total biaya sewa
+                $persenDenda = 100;
+                break;
+            case 'hilang':
+                $dendaKerusakan = $totalBiayaSewa * 10;   // 10x dari total biaya sewa
+                $persenDenda = 1000;
+                break;
+            case 'baik':
+            default:
+                $dendaKerusakan = 0;
+                $persenDenda = 0;
+                break;
+        }
+        
+        // ============================================================
+        // 6. TOTAL DENDA = denda telat + denda kerusakan
+        // ============================================================
+        $totalDenda = $dendaTelat + $dendaKerusakan;
+        
+        // ============================================================
+        // 7. TOTAL TAGIHAN = total biaya sewa + total denda
+        // ============================================================
+        $totalTagihan = $totalBiayaSewa + $totalDenda;
+        
+        // ============================================================
+        // 8. PEMBAYARAN
+        // ============================================================
+        $jumlahBayar = (float)($request->jumlah_bayar ?? 0);
+        
+        // Tentukan status pembayaran
+        if ($totalDenda == 0 && $totalBiayaSewa == 0) {
+            $statusPembayaran = 'tidak_ada_biaya';
+            $statusTransaksi = 'selesai';
+        } elseif ($jumlahBayar >= $totalTagihan) {
+            $statusPembayaran = 'lunas';
+            $statusTransaksi = 'selesai';
+        } elseif ($jumlahBayar > 0) {
+            $statusPembayaran = 'sebagian_lunas';
+            $statusTransaksi = 'pending';
+        } else {
+            $statusPembayaran = 'belum_lunas';
+            $statusTransaksi = 'pending';
+        }
+        
+        // ============================================================
+        // 9. UPDATE PEMINJAMAN
+        // ============================================================
+        $peminjaman->update([
+            'tanggal_kembali' => $request->tanggal_kembali,
+            'denda' => $totalDenda,
+            'hari_terlambat' => $hariTerlambat,
+            'kondisi_saat_kembali' => $request->kondisi,
+            'catatan_pengembalian' => $request->catatan,
+            'status' => 'selesai',
+            'waktu_pengembalian' => now()
+        ]);
+        
+        // ============================================================
+        // 10. UPDATE STATUS LAPTOP
+        // ============================================================
+        $laptop = $peminjaman->laptop;
+        if ($laptop) {
+            if ($request->kondisi == 'hilang') {
+                $laptop->update(['status' => 'hilang']);
+            } elseif ($request->kondisi == 'baik') {
+                $laptop->update(['status' => 'tersedia']);
+            } else {
+                $laptop->update(['status' => 'maintenance']);
+            }
+        }
+        
+        // ============================================================
+        // 11. BUAT TRANSAKSI DENDA
+        // ============================================================
+        $transaksi = TransaksiDenda::create([
+            'peminjaman_id' => $peminjaman->id,
+            'user_id' => $peminjaman->user_id,
+            'petugas_id' => auth()->id(),
+            'total_denda' => $totalDenda,
+            'denda_dibayar' => $jumlahBayar,
+            'status_pembayaran' => $statusPembayaran,
+            'status_transaksi' => $statusTransaksi,
+            'kondisi_barang' => $request->kondisi,
+            'catatan_cek' => $request->catatan ?? 'Pengembalian oleh petugas',
+            'waktu_cek' => now(),
+            'waktu_pembayaran' => $jumlahBayar > 0 ? now() : null,
+            'waktu_selesai' => $statusTransaksi == 'selesai' ? now() : null
+        ]);
+        
+        DB::commit();
+        
+        // ============================================================
+        // 12. RESPONSE
+        // ============================================================
+        $message = '✅ Pengembalian berhasil!';
+        $message .= "\n📊 Total Biaya Sewa: Rp " . number_format($totalBiayaSewa, 0, ',', '.');
+        
+        if ($hariTerlambat > 0) {
+            $message .= "\n⏰ Denda Telat ({$hariTerlambat} hari): Rp " . number_format($dendaTelat, 0, ',', '.');
+        }
+        
+        if ($dendaKerusakan > 0) {
+            $message .= "\n🔧 Denda Kerusakan ({$persenDenda}%): Rp " . number_format($dendaKerusakan, 0, ',', '.');
+        }
+        
+        if ($totalDenda > 0) {
+            $sisa = $totalDenda - $jumlahBayar;
+            if ($sisa > 0) {
+                $message .= "\n💰 Sisa denda: Rp " . number_format($sisa, 0, ',', '.');
+            } else {
+                $message .= "\n✅ Denda telah lunas.";
+            }
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'transaksi_id' => $transaksi->id,
+            'data' => [
+                'harga_sewa_per_hari' => $hargaSewaPerHari,
+                'lama_hari' => $lamaHari,
+                'total_biaya_sewa' => $totalBiayaSewa,
+                'denda_telat' => $dendaTelat,
+                'denda_kerusakan' => $dendaKerusakan,
+                'total_denda' => $totalDenda,
+                'total_tagihan' => $totalTagihan,
+                'dibayar' => $jumlahBayar,
+                'sisa' => max(0, $totalTagihan - $jumlahBayar)
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        DB::rollback();
+        \Log::error('Proses transaksi gagal: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    
+    /**
+     * Proses pembayaran denda dari menu Transaksi (opsional, setelah pengembalian)
+     */
+    public function bayarDenda(Request $request, $transaksiId)
+    {
+        $request->validate([
+            'jumlah_bayar' => 'required|numeric|min:1000',
+            'metode_pembayaran' => 'required|in:tunai,transfer,qris'
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $transaksi = TransaksiDenda::with(['peminjaman', 'user'])
+                ->where('status_pembayaran', '!=', 'lunas')
+                ->findOrFail($transaksiId);
+            
+            $dendaLama = $transaksi->denda_dibayar;
+            $dendaBaru = $dendaLama + $request->jumlah_bayar;
+            $totalDenda = $transaksi->total_denda;
+            
+            if ($dendaBaru > $totalDenda) {
+                throw new \Exception('Jumlah pembayaran melebihi total denda');
+            }
+            
+            // Update status
+            if ($dendaBaru >= $totalDenda) {
+                $statusPembayaran = 'lunas';
+                $statusTransaksi = 'selesai';
+                $waktuSelesai = now();
+            } else {
+                $statusPembayaran = 'sebagian_lunas';
+                $statusTransaksi = 'pending';
+                $waktuSelesai = null;
+            }
+            
+            $transaksi->update([
+                'denda_dibayar' => $dendaBaru,
+                'status_pembayaran' => $statusPembayaran,
+                'status_transaksi' => $statusTransaksi,
+                'metode_pembayaran' => $request->metode_pembayaran,
+                'waktu_pembayaran' => now(),
+                'waktu_selesai' => $waktuSelesai,
+                'petugas_id' => auth()->id()
+            ]);
+            
+            // Update peminjaman jika denda lunas
+            if ($statusPembayaran == 'lunas') {
+                $transaksi->peminjaman()->update([
+                    'is_denda_dibayar' => true
+                ]);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran denda berhasil! Sisa tagihan: Rp ' . 
+                             number_format($totalDenda - $dendaBaru, 0, ',', '.'),
+                'sisa_tagihan' => $totalDenda - $dendaBaru
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses pembayaran: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+/**
+ * Lihat riwayat transaksi denda (untuk menu Transaksi)
+ */
+public function daftarTransaksi(Request $request)
+{
+    $query = TransaksiDenda::with(['peminjaman', 'user', 'petugas'])
+        ->orderBy('created_at', 'desc');
+    
+    // Filter status
+    if ($request->filled('status')) {
+        $query->where('status_pembayaran', $request->status);
+    }
+    
+    // Filter tanggal
+    if ($request->filled('tanggal_mulai')) {
+        $query->whereDate('created_at', '>=', $request->tanggal_mulai);
+    }
+    if ($request->filled('tanggal_selesai')) {
+        $query->whereDate('created_at', '<=', $request->tanggal_selesai);
+    }
+    
+    // Pencarian
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->whereHas('user', function($q2) use ($search) {
+                $q2->where('name', 'like', "%{$search}%")
+                   ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orWhereHas('peminjaman', function($q2) use ($search) {
+                $q2->where('kode_peminjaman', 'like', "%{$search}%")
+                   ->orWhere('id', 'like', "%{$search}%");
+            });
+        });
+    }
+    
+    // ✅ Gunakan nama variabel $transaksis (sesuai view)
+    $transaksis = $query->paginate(15);
+    
+    // Statistik
+    $total_transaksi = TransaksiDenda::count();
+    $total_nominal_denda = TransaksiDenda::sum('total_denda');
+    $total_dibayar = TransaksiDenda::sum('denda_dibayar');
+    $total_belum_bayar = TransaksiDenda::where('status_pembayaran', 'belum_lunas')->sum('total_denda');
+    
+    // ✅ Kirim semua variabel yang dibutuhkan view
+    return view('petugas.transaksi.index', [
+        'transaksis' => $transaksis,  // ← pastikan nama variabelnya 'transaksis'
+        'total_transaksi' => $total_transaksi,
+        'total_nominal_denda' => $total_nominal_denda,
+        'total_dibayar' => $total_dibayar,
+        'total_belum_bayar' => $total_belum_bayar
+    ]);
+}
+    
+    /**
+     * Detail transaksi denda
+     */
+    public function detailTransaksi($id)
+    {
+        $transaksi = TransaksiDenda::with(['peminjaman', 'peminjaman.user', 'peminjaman.laptop', 'petugas'])
+            ->findOrFail($id);
+        
+        return view('petugas.transaksi.show', compact('transaksi'));
+    }
+    
+    /**
+     * Cetak struk transaksi
+     */
+    public function cetakStruk($id)
+    {
+        $transaksi = TransaksiDenda::with(['peminjaman', 'peminjaman.user', 'peminjaman.laptop'])
+            ->findOrFail($id);
+        
+        return view('petugas.transaksi.struk', compact('transaksi'));
+    }
+
+
 }

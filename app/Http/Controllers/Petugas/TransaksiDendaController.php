@@ -1,12 +1,14 @@
 <?php
+
+
 namespace App\Http\Controllers\Petugas;
 
 use App\Http\Controllers\Controller;
-use App\Models\Peminjaman;
 use App\Models\TransaksiDenda;
-use App\Models\User;
+use App\Models\Peminjaman;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class TransaksiDendaController extends Controller
@@ -16,65 +18,30 @@ class TransaksiDendaController extends Controller
      */
     public function index(Request $request)
     {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
-        $query = TransaksiDenda::with(['user', 'peminjaman.laptop'])  // Tambahkan laptop
+        $query = TransaksiDenda::with(['peminjaman.laptop', 'user', 'petugas'])
+            ->whereNull('deleted_at')
             ->orderBy('created_at', 'desc');
-
-        // Filter search
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', function ($q2) use ($search) {
-                    $q2->where('name', 'like', "%{$search}%")
-                       ->orWhere('email', 'like', "%{$search}%");
-                })
-                ->orWhereHas('peminjaman', function ($q2) use ($search) {
-                    $q2->where('kode_peminjaman', 'like', "%{$search}%");
-                });
-            });
+        
+        // Filter status
+        if ($request->filled('status_pembayaran')) {
+            $query->where('status_pembayaran', $request->status_pembayaran);
         }
-
-        // Filter status pembayaran
-        if ($request->status) {
-            $query->where('status_pembayaran', $request->status);
-        }
-
-        // Filter status transaksi
-        if ($request->status_transaksi) {
-            $query->where('status_transaksi', $request->status_transaksi);
-        }
-
+        
         $transaksis = $query->paginate(15);
-
-        // Statistik dashboard
-        $total_transaksi = TransaksiDenda::count();
-        $total_denda = TransaksiDenda::sum('total_denda');
-        $total_pending = TransaksiDenda::where('status_pembayaran', 'belum_lunas')->count();
-        $total_proses = TransaksiDenda::where('status_transaksi', 'proses_cek')->count();
-        $total_lunas = TransaksiDenda::where('status_pembayaran', 'lunas')
-            ->where('status_transaksi', 'selesai')
-            ->count();
-        $total_pendapatan = TransaksiDenda::where('status_pembayaran', 'lunas')
-            ->where('status_transaksi', 'selesai')
-            ->sum('denda_dibayar');
-        $total_denda_belum_lunas = TransaksiDenda::where('status_pembayaran', 'belum_lunas')
+        
+        $total_transaksi = TransaksiDenda::whereNull('deleted_at')->count();
+        $total_nominal_denda = TransaksiDenda::whereNull('deleted_at')->sum('total_denda');
+        $total_dibayar = TransaksiDenda::whereNull('deleted_at')->sum('denda_dibayar');
+        $total_belum_bayar = TransaksiDenda::whereNull('deleted_at')
+            ->whereIn('status_pembayaran', ['belum_lunas', 'sebagian_lunas'])
             ->sum('total_denda');
-        $transaksi_pending = TransaksiDenda::where('status_transaksi', 'pending')->count();
-
+        
         return view('petugas.transaksi.index', compact(
-            'transaksis',
-            'total_transaksi',
-            'total_denda',
-            'total_pending',
-            'total_proses',
-            'total_lunas',
-            'total_pendapatan',
-            'total_denda_belum_lunas',
-            'transaksi_pending'
+            'transaksis', 
+            'total_transaksi', 
+            'total_nominal_denda', 
+            'total_dibayar', 
+            'total_belum_bayar'
         ));
     }
     
@@ -83,213 +50,311 @@ class TransaksiDendaController extends Controller
      */
     public function show($id)
     {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
-        // GANTI 'tool' DENGAN 'laptop'
-        $transaksi = TransaksiDenda::with(['user', 'peminjaman.laptop', 'petugas'])  // ← ubah tool ke laptop
+        $transaksi = TransaksiDenda::with(['peminjaman.laptop', 'user', 'petugas'])
             ->findOrFail($id);
-
+        
         return view('petugas.transaksi.show', compact('transaksi'));
     }
-
+    
     /**
-     * Show form pembayaran
+     * Get data transaksi untuk AJAX
      */
-    public function pembayaran($id)
+    public function getData($id)
     {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
-        $transaksi = TransaksiDenda::with(['user', 'peminjaman.laptop'])  // ← ubah tool ke laptop
-            ->where('status_pembayaran', 'belum_lunas')
-            ->findOrFail($id);
-
-        return view('petugas.transaksi.pembayaran', compact('transaksi'));
-    }
-
-    /**
-     * Process payment
-     */
-    public function prosesPembayaran(Request $request, $id)
-    {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
         try {
-            DB::beginTransaction();
-
-            $transaksi = TransaksiDenda::where('status_pembayaran', 'belum_lunas')
-                ->findOrFail($id);
-
+            $transaksi = TransaksiDenda::findOrFail($id);
+            
+            $totalDenda = abs($transaksi->total_denda ?? 0);
+            $dendaDibayar = abs($transaksi->denda_dibayar ?? 0);
+            $sisa = max(0, $totalDenda - $dendaDibayar);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $transaksi->id,
+                    'total_denda' => $totalDenda,
+                    'dibayar' => $dendaDibayar,
+                    'sisa' => $sisa,
+                    'status' => $transaksi->status_pembayaran
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('getData error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+    
+    /**
+     * Process payment with AJAX
+     */
+    public function bayar(Request $request, $id)
+    {
+        Log::info('=== BAYAR METHOD DIPANGGIL ===');
+        Log::info('ID: ' . $id);
+        Log::info('Request all: ', $request->all());
+        Log::info('User: ' . auth()->id());
+        
+        try {
             $request->validate([
-                'jumlah_dibayar' => 'required|numeric|min:' . ($transaksi->total_denda - $transaksi->denda_dibayar),
-                'metode_pembayaran' => 'required|in:tunai,transfer,qris',
-                'catatan' => 'nullable|string|max:500',
+                'jumlah_bayar' => 'required|numeric|min:1000',
+                'metode_pembayaran' => 'required|in:tunai,transfer,qris'
             ]);
-
-            $sisa = $transaksi->total_denda - $transaksi->denda_dibayar;
-            $jumlah_dibayar = $request->jumlah_dibayar;
-            $kembalian = $jumlah_dibayar - $sisa;
-
-            // Update transaksi
-            $transaksi->update([
-                'denda_dibayar' => $transaksi->denda_dibayar + $sisa,
-                'status_pembayaran' => 'lunas',
-                'status_transaksi' => 'selesai',
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error: ', $e->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal: ' . json_encode($e->errors())
+            ], 422);
+        }
+        
+        DB::beginTransaction();
+        
+        try {
+            // Cari transaksi
+            $transaksi = TransaksiDenda::with(['peminjaman'])->find($id);
+            
+            if (!$transaksi) {
+                throw new \Exception('Transaksi dengan ID ' . $id . ' tidak ditemukan');
+            }
+            
+            Log::info('Transaksi ditemukan:', [
+                'id' => $transaksi->id,
+                'total_denda' => $transaksi->total_denda,
+                'denda_dibayar' => $transaksi->denda_dibayar,
+                'status_pembayaran' => $transaksi->status_pembayaran
+            ]);
+            
+            // Cek status
+            if ($transaksi->status_pembayaran == 'lunas') {
+                throw new \Exception('Transaksi sudah lunas');
+            }
+            
+            // Hitung sisa tagihan (gunakan nilai absolut)
+            $totalDenda = abs($transaksi->total_denda);
+            $dendaDibayar = abs($transaksi->denda_dibayar);
+            $sisaTagihan = $totalDenda - $dendaDibayar;
+            $jumlahBayar = $request->jumlah_bayar;
+            
+            Log::info('Perhitungan:', [
+                'totalDenda' => $totalDenda,
+                'dendaDibayar' => $dendaDibayar,
+                'sisaTagihan' => $sisaTagihan,
+                'jumlahBayar' => $jumlahBayar
+            ]);
+            
+            if ($jumlahBayar > $sisaTagihan) {
+                throw new \Exception('Jumlah pembayaran (' . number_format($jumlahBayar) . ') melebihi sisa tagihan (' . number_format($sisaTagihan) . ')');
+            }
+            
+            $dendaBaru = $dendaDibayar + $jumlahBayar;
+            
+            // Update status
+            $updateData = [
+                'denda_dibayar' => $dendaBaru,
                 'metode_pembayaran' => $request->metode_pembayaran,
-                'catatan_pembayaran' => $request->catatan,
-                'waktu_bayar' => now(),
-                'petugas_id' => auth()->id(),
+                'waktu_pembayaran' => now(),
+                'petugas_id' => auth()->id()
+            ];
+            
+            if ($dendaBaru >= $totalDenda) {
+                $updateData['status_pembayaran'] = 'lunas';
+                $updateData['status_transaksi'] = 'selesai';
+                $updateData['waktu_selesai'] = now();
+            } else {
+                $updateData['status_pembayaran'] = 'sebagian_lunas';
+            }
+            
+            Log::info('Update data:', $updateData);
+            
+            $transaksi->update($updateData);
+            
+            Log::info('Transaksi updated successfully');
+            
+            // Update peminjaman jika ada kolom is_denda_dibayar
+            if ($transaksi->peminjaman) {
+                try {
+                    $transaksi->peminjaman->update(['is_denda_dibayar' => 1]);
+                    Log::info('Peminjaman updated: ' . $transaksi->peminjaman_id);
+                } catch (\Exception $e) {
+                    Log::warning('Could not update peminjaman: ' . $e->getMessage());
+                }
+            }
+            
+            DB::commit();
+            
+            $sisaBaru = $totalDenda - $dendaBaru;
+            
+            Log::info('Pembayaran berhasil, sisa: ' . $sisaBaru);
+            
+            return response()->json([
+                'success' => true,
+                'message' => '✅ Pembayaran berhasil! Sisa tagihan: Rp ' . number_format($sisaBaru, 0, ',', '.'),
+                'sisa_tagihan' => $sisaBaru,
+                'status' => $dendaBaru >= $totalDenda ? 'lunas' : 'sebagian_lunas'
             ]);
-
-            // Update peminjaman
-            $peminjaman = Peminjaman::find($transaksi->peminjaman_id);
-            if ($peminjaman) {
-                $peminjaman->update([
-                    'is_denda_dibayar' => 1,
-                    'status' => 'selesai'
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('ERROR bayar denda: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Show form bayar (Non-AJAX version)
+     */
+    public function formBayar($id)
+    {
+        try {
+            $transaksi = TransaksiDenda::with(['peminjaman.laptop', 'user'])
+                ->findOrFail($id);
+            
+            $totalDenda = abs($transaksi->total_denda);
+            $dendaDibayar = abs($transaksi->denda_dibayar);
+            $sisa = max(0, $totalDenda - $dendaDibayar);
+            
+            return view('petugas.transaksi.form-bayar', compact('transaksi', 'sisa'));
+            
+        } catch (\Exception $e) {
+            return redirect()->route('petugas.transaksi.index')
+                ->with('error', 'Transaksi tidak ditemukan');
+        }
+    }
+    
+    /**
+     * Proses pembayaran dari form (Non-AJAX)
+     */
+    public function prosesBayar(Request $request, $id)
+    {
+        $request->validate([
+            'jumlah_bayar' => 'required|numeric|min:1000',
+            'metode_pembayaran' => 'required|in:tunai,transfer,qris'
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $transaksi = TransaksiDenda::with(['peminjaman'])->findOrFail($id);
+            
+            if ($transaksi->status_pembayaran == 'lunas') {
+                return redirect()->route('petugas.transaksi.index')
+                    ->with('error', 'Transaksi sudah lunas');
+            }
+            
+            $totalDenda = abs($transaksi->total_denda);
+            $dendaDibayar = abs($transaksi->denda_dibayar);
+            $sisaTagihan = $totalDenda - $dendaDibayar;
+            $jumlahBayar = $request->jumlah_bayar;
+            
+            if ($jumlahBayar > $sisaTagihan) {
+                return redirect()->back()
+                    ->with('error', 'Jumlah pembayaran melebihi sisa tagihan')
+                    ->withInput();
+            }
+            
+            $dendaBaru = $dendaDibayar + $jumlahBayar;
+            
+            // Update status
+            if ($dendaBaru >= $totalDenda) {
+                $transaksi->update([
+                    'denda_dibayar' => $dendaBaru,
+                    'status_pembayaran' => 'lunas',
+                    'status_transaksi' => 'selesai',
+                    'metode_pembayaran' => $request->metode_pembayaran,
+                    'waktu_pembayaran' => now(),
+                    'waktu_selesai' => now(),
+                    'petugas_id' => auth()->id()
+                ]);
+            } else {
+                $transaksi->update([
+                    'denda_dibayar' => $dendaBaru,
+                    'status_pembayaran' => 'sebagian_lunas',
+                    'metode_pembayaran' => $request->metode_pembayaran,
+                    'waktu_pembayaran' => now(),
+                    'petugas_id' => auth()->id()
                 ]);
             }
-
+            
             DB::commit();
-
-            return redirect()->route('petugas.transaksi.index')
-                ->with('success', '✅ Pembayaran berhasil diproses. Kembalian: Rp ' . number_format($kembalian, 0, ',', '.'));
-
+            
+            $sisaBaru = $totalDenda - $dendaBaru;
+            
+            if ($sisaBaru > 0) {
+                return redirect()->route('petugas.transaksi.show', $id)
+                    ->with('success', "✅ Pembayaran berhasil! Sisa tagihan: Rp " . number_format($sisaBaru, 0, ',', '.'));
+            } else {
+                return redirect()->route('petugas.transaksi.index')
+                    ->with('success', '✅ Pembayaran lunas! Transaksi selesai.');
+            }
+            
         } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', '❌ Gagal: ' . $e->getMessage())->withInput();
+            DB::rollback();
+            Log::error('prosesBayar error: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Error: ' . $e->getMessage());
         }
     }
-
-    public function export(Request $request)
-    {
-        $format = $request->format;
-
-        // GANTI 'alat' DENGAN 'laptop'
-        $transaksis = TransaksiDenda::with(['peminjaman.user', 'peminjaman.laptop'])  // ← ubah alat ke laptop
-            ->latest()
-            ->get();
-
-        if($format == 'excel'){
-            return \Maatwebsite\Excel\Facades\Excel::download(
-                new \App\Exports\TransaksiDendaExport($transaksis),
-                'transaksi_denda.xlsx'
-            );
-        }
-
-        if($format == 'pdf'){
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-                'petugas.transaksi.export_pdf',
-                compact('transaksis')
-            );
-
-            return $pdf->download('transaksi_denda.pdf');
-        }
-    }
-
+    
     /**
-     * Cetak struk pembayaran
+     * Cetak struk transaksi
      */
     public function cetakStruk($id)
     {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
-        // GANTI 'tool' DENGAN 'laptop'
-        $transaksi = TransaksiDenda::with(['user', 'peminjaman.laptop', 'petugas'])  // ← ubah tool ke laptop
-            ->where('status_pembayaran', 'lunas')
-            ->where('status_transaksi', 'selesai')
-            ->findOrFail($id);
-
-        // Jika request AJAX, return HTML untuk modal
-        if (request()->ajax()) {
-            return view('petugas.transaksi.struk', compact('transaksi'));
-        }
-
-        // Jika request biasa, return view untuk cetak
-        return view('petugas.transaksi.cetak-struk', compact('transaksi'));
-    }
-
-    /**
-     * Create transaksi from peminjaman
-     */
-    public function createTransaksi($peminjaman_id)
-    {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
-        // GANTI 'tool' DENGAN 'laptop'
-        $peminjaman = Peminjaman::with(['user', 'laptop'])  // ← ubah tool ke laptop
-            ->where('denda', '>', 0)
-            ->findOrFail($peminjaman_id);
-
-        // Cek apakah sudah ada transaksi
-        $existing = TransaksiDenda::where('peminjaman_id', $peminjaman_id)->first();
-        if ($existing) {
-            return redirect()->route('petugas.transaksi.show', $existing->id)
-                ->with('info', 'Transaksi sudah ada');
-        }
-
-        return view('petugas.transaksi.create', compact('peminjaman'));
-    }
-
-    /**
-     * Store transaksi from peminjaman
-     */
-    public function storeTransaksi(Request $request, $peminjaman_id)
-    {
-        if (auth()->user()->role !== 'petugas') {
-            abort(403);
-        }
-
         try {
-            DB::beginTransaction();
-
-            $peminjaman = Peminjaman::with('user')
-                ->where('denda', '>', 0)
-                ->findOrFail($peminjaman_id);
-
-            // Cek apakah sudah ada transaksi
-            $existing = TransaksiDenda::where('peminjaman_id', $peminjaman_id)->first();
-            if ($existing) {
-                return redirect()->route('petugas.transaksi.show', $existing->id);
-            }
-
-            $request->validate([
-                'total_denda' => 'required|numeric|min:0',
-                'kondisi_barang' => 'required|in:baik,rusak_ringan,rusak_berat,hilang',
-                'catatan_cek' => 'nullable|string|max:500',
-            ]);
-
-            // Buat transaksi baru
-            $transaksi = TransaksiDenda::create([
-                'peminjaman_id' => $peminjaman->id,
-                'user_id' => $peminjaman->user_id,
-                'petugas_id' => auth()->id(),
-                'total_denda' => $request->total_denda,
-                'denda_dibayar' => 0,
-                'status_pembayaran' => 'belum_lunas',
-                'status_transaksi' => 'proses_cek',
-                'kondisi_barang' => $request->kondisi_barang,
-                'catatan_cek' => $request->catatan_cek,
-                'waktu_cek' => now(),
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('petugas.transaksi.show', $transaksi->id)
-                ->with('success', '✅ Transaksi denda berhasil dibuat');
-
+            $transaksi = TransaksiDenda::with(['peminjaman.laptop', 'user', 'petugas'])
+                ->findOrFail($id);
+            
+            return view('petugas.transaksi.struk', compact('transaksi'));
+            
         } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', '❌ Gagal: ' . $e->getMessage())->withInput();
+            return redirect()->route('petugas.transaksi.index')
+                ->with('error', 'Transaksi tidak ditemukan');
+        }
+    }
+    
+    /**
+     * Soft delete transaksi
+     */
+    public function destroy($id)
+    {
+        try {
+            $transaksi = TransaksiDenda::findOrFail($id);
+            $transaksi->delete();
+            
+            return redirect()->route('petugas.transaksi.index')
+                ->with('success', 'Transaksi berhasil dihapus');
+                
+        } catch (\Exception $e) {
+            Log::error('destroy error: ' . $e->getMessage());
+            return redirect()->route('petugas.transaksi.index')
+                ->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Restore soft deleted transaksi
+     */
+    public function restore($id)
+    {
+        try {
+            $transaksi = TransaksiDenda::withTrashed()->findOrFail($id);
+            $transaksi->restore();
+            
+            return redirect()->route('petugas.transaksi.index')
+                ->with('success', 'Transaksi berhasil dipulihkan');
+                
+        } catch (\Exception $e) {
+            Log::error('restore error: ' . $e->getMessage());
+            return redirect()->route('petugas.transaksi.index')
+                ->with('error', 'Gagal memulihkan transaksi: ' . $e->getMessage());
         }
     }
 }

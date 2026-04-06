@@ -40,74 +40,35 @@ class LaporanController extends Controller
      * @example
      * GET /petugas/laporan?tanggal_mulai=2024-01-01&tanggal_selesai=2024-12-31
      */
-    public function index(Request $request): View
-    {
-        // Otorisasi: Hanya petugas yang dapat mengakses laporan
-        if (auth()->user()->role !== 'petugas') {
-            abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
-        }
-        
-        /**
-         * Inisialisasi query untuk mengambil data peminjaman
-         * - with(['user', 'laptop']): Eager loading relasi user dan laptop untuk menghindari N+1 query
-         * - where('status', 'selesai'): Hanya menampilkan peminjaman yang sudah selesai (laptop dikembalikan)
-         * 
-         * Catatan: Relasi 'tool' telah diubah menjadi 'laptop' sesuai dengan struktur database
-         * aplikasi peminjaman laptop
-         */
-        $query = Peminjaman::with(['user', 'laptop'])
-            ->where('status', 'selesai');
-        
-        // ========== FILTER BERDASARKAN TANGGAL ==========
-        
-        /**
-         * Filter tanggal mulai peminjaman
-         * Menampilkan peminjaman dengan tanggal pinjam >= tanggal_mulai yang dipilih
-         * 
-         * @var string|null $request->tanggal_mulai
-         */
-        if ($request->has('tanggal_mulai') && $request->tanggal_mulai != '') {
-            $query->whereDate('tanggal_pinjam', '>=', $request->tanggal_mulai);
-        }
-        
-        /**
-         * Filter tanggal selesai peminjaman
-         * Menampilkan peminjaman dengan tanggal pinjam <= tanggal_selesai yang dipilih
-         * 
-         * @var string|null $request->tanggal_selesai
-         */
-        if ($request->has('tanggal_selesai') && $request->tanggal_selesai != '') {
-            $query->whereDate('tanggal_pinjam', '<=', $request->tanggal_selesai);
-        }
-        
-        /**
-         * Mengambil data laporan dengan urutan tanggal pinjam terbaru
-         * Menggunakan pagination 20 data per halaman untuk performa yang baik
-         * 
-         * @var \Illuminate\Pagination\LengthAwarePaginator $laporan
-         */
-        $laporan = $query->orderBy('tanggal_pinjam', 'desc')->paginate(20);
-        
-        /**
-         * Menghitung total denda dari data laporan yang ditampilkan
-         * Menggunakan method sum() pada collection untuk menjumlahkan field 'denda'
-         * 
-         * @var int|float $total_denda
-         */
-        $total_denda = $laporan->sum('denda');
-        
-        /**
-         * Menghitung total peminjaman yang ditampilkan (tanpa mempertimbangkan pagination)
-         * total() mengembalikan jumlah total data sebelum dipaginasi
-         * 
-         * @var int $total_peminjaman
-         */
-        $total_peminjaman = $laporan->total();
-        
-        // Kirim data ke view laporan
-        return view('petugas.laporan.index', compact('laporan', 'total_denda', 'total_peminjaman'));
+public function index(Request $request): View
+{
+    if (auth()->user()->role !== 'petugas') {
+        abort(403, 'Akses ditolak. Hanya petugas yang diizinkan.');
     }
-
+    
+    $query = Peminjaman::with(['user', 'laptop']);
+    
+    // Filter status (biarkan semua status, tidak hanya selesai)
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+    
+    // Filter tanggal
+    if ($request->filled('tanggal_mulai')) {
+        $query->whereDate('tanggal_pinjam', '>=', $request->tanggal_mulai);
+    }
+    
+    if ($request->filled('tanggal_selesai')) {
+        $query->whereDate('tanggal_pinjam', '<=', $request->tanggal_selesai);
+    }
+    
+    $laporan = $query->orderBy('tanggal_pinjam', 'desc')->paginate(20);
+    
+    $total_denda = $laporan->sum('denda');
+    $total_peminjaman = $laporan->total();
+    
+    return view('petugas.laporan.index', compact('laporan', 'total_denda', 'total_peminjaman'));
+}
     /**
      * Menampilkan detail laporan peminjaman berdasarkan ID.
      * 
