@@ -11,6 +11,10 @@
 @section('header-icon', $isEdit ? 'fas fa-edit' : 'fas fa-money-bill-wave')
 @section('header-title', $title)
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row justify-content-center">
@@ -564,38 +568,5 @@
     @endif
 </script>
 
-<style>
-    .form-label.fw-semibold {
-        color: #495057;
-        margin-bottom: 0.5rem;
-    }
-    
-    .form-control:disabled, .form-select:disabled {
-        background-color: #f8f9fa;
-        cursor: not-allowed;
-    }
-    
-    #imagePreviewContainer {
-        min-height: 150px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .input-group-text {
-        background-color: #f8f9fa;
-    }
-    
-    .card {
-        border-radius: 12px;
-    }
-    
-    .card-header {
-        border-bottom: 1px solid rgba(0,0,0,.125);
-    }
-    
-    .badge.fs-6 {
-        font-size: 0.85rem !important;
-    }
-</style>
+
 @endsection

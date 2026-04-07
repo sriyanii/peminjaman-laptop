@@ -4,6 +4,9 @@
 @section('header-icon', $mode == 'show' ? 'fas fa-user' : ($mode == 'edit' ? 'fas fa-edit' : 'fas fa-user-plus'))
 @section('header-title', $mode == 'show' ? 'Detail User: ' . $user->name : ($mode == 'edit' ? 'Edit User' : 'Tambah User Baru'))
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row justify-content-center">
@@ -422,35 +425,4 @@
     }
 </script>
 
-<style>
-    .avatar-circle-lg {
-        width: 120px;
-        height: 120px;
-        background: linear-gradient(135deg, #3a86ff, #2667cc);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 40px;
-        font-weight: bold;
-        margin: 0 auto 20px;
-        overflow: hidden;
-        border: 4px solid white;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    
-    .form-control-plaintext {
-        min-height: 38px;
-        padding: 6px 12px;
-        background-color: #f8f9fa;
-        border-radius: 6px;
-        border: 1px solid #e9ecef;
-    }
-    
-    .form-check-input:checked {
-        background-color: #3a86ff;
-        border-color: #3a86ff;
-    }
-</style>
 @endsection

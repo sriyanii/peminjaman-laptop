@@ -1,5 +1,8 @@
 @extends('layouts.app')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/user-peminjaman.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row mb-4 g-3">
@@ -270,10 +273,13 @@
                                     <input type="hidden" name="denda" value="0">
                                     <input type="hidden" name="is_denda_dibayar" value="0">
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                    <button type="submit" class="btn btn-primary">Ajukan</button>
-                                </div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+    <button type="submit" class="btn btn-primary" 
+            onclick="var s=new Audio('{{ asset("audio/audio2.wav") }}'); s.volume=0.7; s.play(); setTimeout(()=>{s.currentTime=0; s.play();}, 500); setTimeout(()=>{s.currentTime=0; s.play();}, 1000); setTimeout(()=>{s.currentTime=0; s.play();}, 1500); setTimeout(()=>{s.currentTime=0; s.play();}, 2000); setTimeout(()=>{s.currentTime=0; s.play();}, 2500);">
+        Ajukan
+    </button>
+</div>
                             </form>
                         </div>
                     </div>
@@ -332,31 +338,4 @@
         }, 100);
     }
 </script>
-
-<style>
-    .card {
-        transition: all 0.3s ease;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    
-    .badge {
-        font-weight: 500;
-        padding: 5px 10px;
-    }
-    
-    .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .btn-clicked {
-        transform: scale(0.95);
-        transition: transform 0.1s ease;
-    }
-</style>
 @endsection

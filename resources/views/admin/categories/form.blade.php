@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-tags')
 @section('header-title', $mode == 'show' ? 'Detail Kategori' : ($mode == 'edit' ? 'Edit Kategori' : 'Tambah Kategori Baru'))
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row justify-content-center">
@@ -168,13 +172,5 @@
     }
 </script>
 
-<style>
-    .form-control-plaintext {
-        min-height: 38px;
-        padding: 6px 12px;
-        background-color: #f8f9fa;
-        border-radius: 6px;
-        border: 1px solid #e9ecef;
-    }
-</style>
+
 @endsection

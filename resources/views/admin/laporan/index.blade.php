@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-chart-bar')
 @section('header-title', 'Laporan Lengkap Semua Kegiatan')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid">
     <!-- Filter -->
@@ -209,51 +213,3 @@
     </div>
 </div>
 @endsection
-
-@push('styles')
-<style>
-.stats-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    height: 100%;
-    transition: all 0.3s ease;
-    border: none;
-}
-
-.stats-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-
-.stats-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    margin-bottom: 15px;
-}
-
-.stats-number {
-    font-size: 28px;
-    font-weight: 700;
-    margin: 10px 0;
-    color: #2c3e50;
-}
-
-.stats-label {
-    color: #6c757d;
-    font-size: 14px;
-    margin-bottom: 5px;
-}
-
-.table th {
-    font-weight: 600;
-    color: #495057;
-}
-</style>
-@endpush

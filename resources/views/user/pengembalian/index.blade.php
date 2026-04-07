@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-undo-alt')
 @section('header-title', 'Pengembalian Alat')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/user-peminjaman.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row">
@@ -364,80 +368,6 @@
         </div>
     </div>
 </div>
-
-<!-- CSS untuk Print -->
-<style>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #strukContent, #strukContent * {
-        visibility: visible;
-    }
-    #strukContent {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        padding: 20px;
-        background: white;
-    }
-    .modal-footer {
-        display: none !important;
-    }
-    .btn-close {
-        display: none !important;
-    }
-}
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    border: 1px solid #eef2f7;
-}
-
-.badge {
-    font-weight: 500;
-    padding: 5px 10px;
-}
-
-.btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.btn-primary:hover {
-    background-color: #0b5ed7;
-    border-color: #0a58ca;
-}
-
-.card.border-danger {
-    border-left: 4px solid #dc3545 !important;
-}
-
-.card.border-primary {
-    border-left: 4px solid #0d6efd !important;
-}
-
-/* Style untuk struk */
-#strukContent {
-    font-family: 'Courier New', monospace;
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-#strukContent .table {
-    font-size: 14px;
-}
-
-#strukContent hr {
-    border-top: 2px dashed #333;
-}
-
-#strukContent .badge {
-    font-size: 12px;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

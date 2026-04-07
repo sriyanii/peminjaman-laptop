@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-tags')
 @section('header-title', 'Manajemen Kategori')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <!-- ====================== TABEL KATEGORI ====================== -->
@@ -156,19 +160,4 @@
         });
     @endif
 </script>
-
-<style>
-    .table td, .table th {
-        vertical-align: middle;
-    }
-    
-    .badge {
-        font-weight: 500;
-        padding: 0.35em 0.65em;
-    }
-    
-    .btn-group-sm .btn {
-        padding: 0.25rem 0.5rem;
-    }
-</style>
 @endsection

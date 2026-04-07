@@ -236,8 +236,3 @@
 </div>
 @endsection
 
-@push('scripts')
-<script>
-    // Optional: Tambahkan JavaScript jika diperlukan
-</script>
-@endpush

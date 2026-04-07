@@ -4,6 +4,9 @@
 @section('header-icon', 'fas fa-undo-alt')
 @section('header-title', 'Form Pengembalian Alat')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/user-peminjaman.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row justify-content-center">
@@ -193,23 +196,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-.alert {
-    border-radius: 8px;
-}
-.form-label {
-    font-weight: 500;
-}
-.btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-.btn-primary:hover {
-    background-color: #0b5ed7;
-}
-</style>
+
 @endsection

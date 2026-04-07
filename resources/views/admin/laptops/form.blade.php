@@ -4,6 +4,10 @@
 @section('header-icon', isset($laptop) ? (request()->routeIs('admin.laptops.show') ? 'fas fa-tools' : 'fas fa-edit') : 'fas fa-plus')
 @section('header-title', isset($laptop) ? (request()->routeIs('admin.laptops.show') ? 'Detail Alat' : 'Edit Alat') : 'Tambah Alat Baru')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row justify-content-center">
@@ -597,22 +601,4 @@
         });
     }
 </script>
-
-<style>
-    .form-control-plaintext {
-        min-height: 38px;
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-    }
-    
-    .action-btn {
-        width: 34px;
-        height: 34px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50% !important;
-    }
-</style>
 @endsection

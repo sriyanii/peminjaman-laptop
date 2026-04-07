@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <!-- ====================== STATISTIK ====================== -->
@@ -535,141 +539,5 @@
     });
 </script>
 
-<style>
-    .stats-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        height: 100%;
-        transition: transform 0.3s ease;
-        border: none;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-    
-    .stats-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-    
-    .stats-number {
-        font-size: 32px;
-        font-weight: 700;
-        margin: 10px 0;
-        color: #2c3e50;
-    }
-    
-    .stats-label {
-        color: #6c757d;
-        font-size: 14px;
-        margin-bottom: 10px;
-    }
-    
-    .btn-group .btn.active {
-        background-color: #3a86ff;
-        color: white;
-        border-color: #3a86ff;
-    }
-    
-    .card {
-        transition: all 0.3s ease;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    
-    .badge {
-        font-weight: 500;
-        padding: 5px 10px;
-    }
-    
-    .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-    
-    .modal-header .btn-close {
-        filter: invert(1);
-        opacity: 0.8;
-    }
-    
-    .modal-header .btn-close:hover {
-        opacity: 1;
-    }
-    
-    .alert {
-        border-radius: 8px;
-        border: none;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #764ba2;
-        box-shadow: 0 0 0 0.2rem rgba(118, 75, 162, 0.25);
-    }
-    
-    .detail-row {
-        display: flex;
-        margin-bottom: 10px;
-        border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 8px;
-    }
-    
-    .detail-label {
-        width: 40%;
-        font-weight: 600;
-        color: #495057;
-    }
-    
-    .detail-value {
-        width: 60%;
-        color: #212529;
-    }
-    
-    @media (max-width: 768px) {
-        .col-md-4 {
-            width: 100%;
-        }
-        
-        .modal-dialog {
-            margin: 10px;
-        }
-        
-        .card-body {
-            padding: 1rem;
-        }
-        
-        .stats-card {
-            padding: 15px;
-        }
-        
-        .stats-number {
-            font-size: 24px;
-        }
-        
-        .detail-row {
-            flex-direction: column;
-        }
-        
-        .detail-label, .detail-value {
-            width: 100%;
-        }
-        
-        .detail-label {
-            margin-bottom: 5px;
-        }
-    }
-</style>
+
 @endpush

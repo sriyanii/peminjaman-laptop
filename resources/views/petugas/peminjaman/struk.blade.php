@@ -1,56 +1,19 @@
 {{-- resources/views/petugas/peminjaman/struk.blade.php --}}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Struk Pengembalian</title>
-    <style>
-        body {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 20px;
-        }
-        .struk {
-            max-width: 300px;
-            margin: 0 auto;
-            border: 1px solid #ddd;
-            padding: 15px;
-        }
-        .text-center {
-            text-align: center;
-        }
-        .text-right {
-            text-align: right;
-        }
-        .border-bottom {
-            border-bottom: 1px dashed #000;
-            margin: 10px 0;
-        }
-        .table {
-            width: 100%;
-            margin: 10px 0;
-        }
-        .table td {
-            padding: 4px 0;
-        }
-        .total {
-            font-size: 14px;
-            font-weight: bold;
-        }
-        @media print {
-            body {
-                padding: 0;
-                margin: 0;
-            }
-            .no-print {
-                display: none;
-            }
-        }
-    </style>
-</head>
-<body>
+@extends('layouts.app')
+
+@section('title', 'Struk Pengembalian')
+@section('header-icon', 'fas fa-receipt')
+@section('header-title', 'Struk Pengembalian')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/petugas.css') }}">
+@endpush
+
+@section('content')
+<div class="struk-container">
     <div class="struk">
         <div class="text-center">
-            <h4>PEMINJAMAN LAPTOP</h4>
+            <h4>PEMINJAMAN ALAT</h4>
             <p>Jl. Contoh No. 123, Kota<br>Telp: (021) 1234567</p>
             <div class="border-bottom"></div>
             <p><strong>STRUK PENGEMBALIAN</strong></p>
@@ -77,15 +40,15 @@
         <table class="table">
             <tr>
                 <td>Kode Peminjaman</td>
-                <td>: {{ $peminjaman->kode_peminjaman }}</td>
+                <td>: {{ $peminjaman->kode_peminjaman ?? '-' }}</td>
             </tr>
             <tr>
                 <td>Peminjam</td>
                 <td>: {{ $peminjaman->user->name ?? '-' }}</td>
             </tr>
             <tr>
-                <td>Laptop</td>
-                <td>: {{ $peminjaman->laptop->merk ?? '-' }} {{ $peminjaman->laptop->model ?? '-' }}</td>
+                <td>Alat</td>
+                <td>: {{ $peminjaman->laptop->merk ?? $peminjaman->nama_alat ?? '-' }} {{ $peminjaman->laptop->model ?? '' }}</td>
             </tr>
         </table>
         
@@ -94,19 +57,19 @@
         <table class="table">
             <tr>
                 <td>Tanggal Pinjam</td>
-                <td class="text-right">: {{ Carbon\Carbon::parse($peminjaman->tanggal_pinjam)->format('d/m/Y') }}</td>
+                <td class="text-right">: {{ $peminjaman->tanggal_pinjam ? \Carbon\Carbon::parse($peminjaman->tanggal_pinjam)->format('d/m/Y') : '-' }}</td>
             </tr>
             <tr>
                 <td>Rencana Kembali</td>
-                <td class="text-right">: {{ Carbon\Carbon::parse($peminjaman->tanggal_kembali_rencana)->format('d/m/Y') }}</td>
+                <td class="text-right">: {{ $peminjaman->tanggal_kembali_rencana ? \Carbon\Carbon::parse($peminjaman->tanggal_kembali_rencana)->format('d/m/Y') : '-' }}</td>
             </tr>
             <tr>
                 <td>Tanggal Kembali</td>
-                <td class="text-right">: {{ Carbon\Carbon::parse($peminjaman->tanggal_kembali)->format('d/m/Y') }}</td>
+                <td class="text-right">: {{ $peminjaman->tanggal_kembali ? \Carbon\Carbon::parse($peminjaman->tanggal_kembali)->format('d/m/Y') : now()->format('d/m/Y') }}</td>
             </tr>
             <tr>
                 <td>Lama Sewa</td>
-                <td class="text-right">: {{ $peminjaman->lama_hari }} hari</td>
+                <td class="text-right">: {{ $peminjaman->lama_hari ?? 0 }} hari</td>
             </tr>
         </table>
         
@@ -115,15 +78,15 @@
         <table class="table">
             <tr>
                 <td>Harga Sewa</td>
-                <td class="text-right">: Rp {{ number_format($peminjaman->harga_sewa, 0, ',', '.') }}</td>
+                <td class="text-right">: Rp {{ number_format($peminjaman->harga_sewa ?? 0, 0, ',', '.') }}</td>
             </tr>
-            @if($denda_telat > 0)
+            @if(isset($denda_telat) && $denda_telat > 0)
             <tr>
-                <td>Denda Telat ({{ $telat_hari }} hari)</td>
+                <td>Denda Telat ({{ $telat_hari ?? 0 }} hari)</td>
                 <td class="text-right">: Rp {{ number_format($denda_telat, 0, ',', '.') }}</td>
             </tr>
             @endif
-            @if($denda_kerusakan > 0)
+            @if(isset($denda_kerusakan) && $denda_kerusakan > 0)
             <tr>
                 <td>Denda Kerusakan</td>
                 <td class="text-right">: Rp {{ number_format($denda_kerusakan, 0, ',', '.') }}</td>
@@ -131,18 +94,18 @@
             @endif
             <tr class="total">
                 <td><strong>TOTAL TAGIHAN</strong></td>
-                <td class="text-right"><strong>: Rp {{ number_format($total_tagihan, 0, ',', '.') }}</strong></td>
+                <td class="text-right"><strong>: Rp {{ number_format($total_tagihan ?? 0, 0, ',', '.') }}</strong></td>
             </tr>
             <tr>
                 <td>Jumlah Bayar</td>
-                <td class="text-right">: Rp {{ number_format($jumlah_dibayar, 0, ',', '.') }}</td>
+                <td class="text-right">: Rp {{ number_format($jumlah_dibayar ?? 0, 0, ',', '.') }}</td>
             </tr>
-            @if($jumlah_dibayar - $total_tagihan > 0)
+            @if(isset($jumlah_dibayar) && isset($total_tagihan) && ($jumlah_dibayar - $total_tagihan) > 0)
             <tr>
                 <td>Kembalian</td>
                 <td class="text-right">: Rp {{ number_format($jumlah_dibayar - $total_tagihan, 0, ',', '.') }}</td>
             </tr>
-            @elseif($jumlah_dibayar - $total_tagihan < 0)
+            @elseif(isset($jumlah_dibayar) && isset($total_tagihan) && ($jumlah_dibayar - $total_tagihan) < 0)
             <tr>
                 <td>Sisa Tagihan</td>
                 <td class="text-right">: Rp {{ number_format($total_tagihan - $jumlah_dibayar, 0, ',', '.') }}</td>
@@ -155,10 +118,31 @@
         <div class="text-center">
             <p>Terima kasih<br>Barang sudah dikembalikan</p>
             <div class="border-bottom"></div>
-            <p class="no-print">
-                <button onclick="window.print()" style="margin-top: 10px;">Cetak Struk</button>
-            </p>
+            <div class="no-print">
+                <button onclick="window.print()" class="btn-petugas btn-petugas-primary">
+                    <i class="fas fa-print me-2"></i> Cetak Struk
+                </button>
+                <a href="{{ route('petugas.peminjaman.index') }}" class="btn-petugas btn-petugas-secondary ms-2">
+                    <i class="fas fa-arrow-left me-2"></i> Kembali
+                </a>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    // Auto print when page loads (optional)
+    // window.onload = function() {
+    //     setTimeout(function() {
+    //         window.print();
+    //     }, 500);
+    // };
+    
+    // Print function
+    function printStruk() {
+        window.print();
+    }
+</script>
+@endpush

@@ -95,69 +95,57 @@ class PeminjamanController extends Controller
         return view('user.peminjaman.index', compact('peminjaman', 'statistics'));
     }
 
-    
-
-    public function create($laptop_id = null)
+    public function store(Request $request)
     {
-        $laptop = null;
-        if ($laptop_id) {
-            $laptop = Laptop::findOrFail($laptop_id);
-        }
-        return view('user.peminjaman.create', compact('laptop'));
-    }
-
-public function store(Request $request)
-{
-    $request->validate([
-        'laptop_id' => 'required|exists:laptops,id',
-        'tanggal_pinjam' => 'required|date',
-        'tanggal_kembali_rencana' => 'required|date|after:tanggal_pinjam',
-        'tujuan' => 'required',
-        'keterangan' => 'nullable|string'
-    ]);
-
-    $peminjamanAktifCount = Peminjaman::where('user_id', auth()->id())
-        ->whereIn('status', ['approved', 'aktif'])
-        ->whereNull('tanggal_kembali')
-        ->count();
-
-    if ($peminjamanAktifCount >= 2) {
-        return back()->with('error', 'Anda sudah memiliki 2 peminjaman aktif.');
-    }
-
-    $laptop = Laptop::findOrFail($request->laptop_id);
-    
-    if ($laptop->status !== 'tersedia') {
-        return back()->with('error', 'Alat tidak tersedia untuk dipinjam.');
-    }
-
-    DB::beginTransaction();
-    
-    try {
-        $peminjaman = Peminjaman::create([
-            'user_id' => auth()->id(),
-            'laptop_id' => $request->laptop_id,
-            'nama_alat' => $request->nama_alat ?? $laptop->merk . ' ' . $laptop->model,
-            'tanggal_pinjam' => $request->tanggal_pinjam,
-            'tanggal_kembali_rencana' => $request->tanggal_kembali_rencana,
-            'tujuan' => $request->tujuan,
-            'keterangan' => $request->keterangan,
-            'status' => 'pending',
-            'denda' => 0,
-            'is_denda_dibayar' => 0
+        $request->validate([
+            'laptop_id' => 'required|exists:laptops,id',
+            'tanggal_pinjam' => 'required|date',
+            'tanggal_kembali_rencana' => 'required|date|after:tanggal_pinjam',
+            'tujuan' => 'required',
+            'keterangan' => 'nullable|string'
         ]);
 
+        $peminjamanAktifCount = Peminjaman::where('user_id', auth()->id())
+            ->whereIn('status', ['approved', 'aktif'])
+            ->whereNull('tanggal_kembali')
+            ->count();
 
-        DB::commit();
+        if ($peminjamanAktifCount >= 2) {
+            return back()->with('error', 'Anda sudah memiliki 2 peminjaman aktif.');
+        }
 
-        return redirect()->route('user.peminjaman.index')
-            ->with('success', 'Peminjaman berhasil diajukan. Menunggu persetujuan petugas.');
+        $laptop = Laptop::findOrFail($request->laptop_id);
+        
+        if ($laptop->status !== 'tersedia') {
+            return back()->with('error', 'Alat tidak tersedia untuk dipinjam.');
+        }
 
-    } catch (\Exception $e) {
-        DB::rollback();
-        return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        DB::beginTransaction();
+        
+        try {
+            $peminjaman = Peminjaman::create([
+                'user_id' => auth()->id(),
+                'laptop_id' => $request->laptop_id,
+                'nama_alat' => $request->nama_alat ?? $laptop->merk . ' ' . $laptop->model,
+                'tanggal_pinjam' => $request->tanggal_pinjam,
+                'tanggal_kembali_rencana' => $request->tanggal_kembali_rencana,
+                'tujuan' => $request->tujuan,
+                'keterangan' => $request->keterangan,
+                'status' => 'pending',
+                'denda' => 0,
+                'is_denda_dibayar' => 0
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('user.peminjaman.index')
+                ->with('success', 'Peminjaman berhasil diajukan. Menunggu persetujuan petugas.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-}
 
     public function show($id)
     {
@@ -202,31 +190,74 @@ public function store(Request $request)
         }
     }
 
+    /**
+     * Hapus permanen data peminjaman
+     * Untuk status: selesai, ditolak, batal
+     */
     public function forceDelete($id)
     {
         try {
             $peminjaman = Peminjaman::findOrFail($id);
             
-            if ($peminjaman->status != 'batal') {
-                return redirect()->route('user.peminjaman.index')
-                    ->with('error', 'Hanya peminjaman yang sudah dibatalkan yang dapat dihapus.');
-            }
-            
+            // Validasi kepemilikan
             if ($peminjaman->user_id != auth()->id()) {
+                if (request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki akses'
+                    ], 403);
+                }
                 return redirect()->route('user.peminjaman.index')
                     ->with('error', 'Anda tidak memiliki akses.');
             }
             
+            // Validasi status yang boleh dihapus (selesai, ditolak, batal)
+            $allowedStatuses = ['selesai', 'ditolak', 'batal'];
+            if (!in_array($peminjaman->status, $allowedStatuses)) {
+                if (request()->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Hanya peminjaman dengan status Selesai, Ditolak, atau Batal yang dapat dihapus.'
+                    ], 400);
+                }
+                return redirect()->route('user.peminjaman.index')
+                    ->with('error', 'Hanya peminjaman dengan status Selesai, Ditolak, atau Batal yang dapat dihapus.');
+            }
+            
+            DB::beginTransaction();
+            
+            // Kembalikan status laptop jika status batal dan laptop masih terisi
+            if ($peminjaman->status == 'batal' && $peminjaman->laptop) {
+                $peminjaman->laptop->update(['status' => 'tersedia']);
+            }
+            
+            // Hapus permanen
             $peminjaman->forceDelete();
             
+            DB::commit();
+            
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Riwayat peminjaman berhasil dihapus'
+                ]);
+            }
+            
             return redirect()->route('user.peminjaman.index')
-                ->with('success', 'Data peminjaman berhasil dihapus');
+                ->with('success', 'Riwayat peminjaman berhasil dihapus');
                 
         } catch (\Exception $e) {
+            DB::rollback();
+            
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->route('user.peminjaman.index')
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
-    
 }

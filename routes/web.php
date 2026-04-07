@@ -119,11 +119,6 @@ Route::middleware('auth')->group(function () {
 
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | PETUGAS ROUTES
-    |--------------------------------------------------------------------------
-    */
 
     /*
     |--------------------------------------------------------------------------
@@ -172,36 +167,44 @@ Route::middleware('petugas')
     |--------------------------------------------------------------------------
     */
 
-    Route::middleware(['auth','role:user,peminjam'])
-        ->prefix('user')
-        ->name('user.')
-        ->group(function () {
+/*
+|--------------------------------------------------------------------------
+| USER ROUTES
+|--------------------------------------------------------------------------
+*/
 
-            Route::get('/dashboard', [App\Http\Controllers\User\DashboardController::class, 'index'])->name('dashboard');
+Route::middleware(['auth','role:user,peminjam'])
+    ->prefix('user')
+    ->name('user.')
+    ->group(function () {
 
-            Route::get('/alat', [App\Http\Controllers\User\AlatController::class, 'index'])->name('alat');
+        Route::get('/dashboard', [App\Http\Controllers\User\DashboardController::class, 'index'])->name('dashboard');
 
-            Route::prefix('peminjaman')->name('peminjaman.')->group(function () {
-                Route::get('/', [App\Http\Controllers\User\PeminjamanController::class, 'index'])->name('index');
-                Route::get('/create/{laptop_id?}', [App\Http\Controllers\User\PeminjamanController::class, 'create'])->name('create');
-                Route::post('/', [App\Http\Controllers\User\PeminjamanController::class, 'store'])->name('store');
-                Route::get('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'show'])->name('show');
-                Route::delete('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'destroy'])->name('destroy');
-                Route::delete('/{id}/force', [App\Http\Controllers\User\PeminjamanController::class, 'forceDelete'])->name('force-delete');
-                Route::post('/{id}/take', [App\Http\Controllers\User\PeminjamanController::class, 'takeItem'])->name('take');
-            });
+        Route::get('/alat', [App\Http\Controllers\User\AlatController::class, 'index'])->name('alat');
 
-            Route::prefix('pengembalian')->name('pengembalian.')->group(function () {
-                Route::get('/', [App\Http\Controllers\User\PengembalianController::class, 'index'])->name('index');
-                Route::get('/create/{peminjaman_id?}', [App\Http\Controllers\User\PengembalianController::class, 'create'])->name('create');
-                Route::post('/{peminjaman}', [App\Http\Controllers\User\PengembalianController::class, 'store'])->name('store');
-                Route::get('/{id}', [App\Http\Controllers\User\PengembalianController::class, 'show'])->name('show');
-            });
-
-            Route::get('/riwayat', [App\Http\Controllers\User\RiwayatController::class, 'index'])->name('history');
-
+        Route::prefix('peminjaman')->name('peminjaman.')->group(function () {
+            Route::get('/', [App\Http\Controllers\User\PeminjamanController::class, 'index'])->name('index');
+            Route::get('/create/{laptop_id?}', [App\Http\Controllers\User\PeminjamanController::class, 'create'])->name('create');
+            Route::post('/', [App\Http\Controllers\User\PeminjamanController::class, 'store'])->name('store');
+            Route::get('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'show'])->name('show');
+            Route::delete('/{id}', [App\Http\Controllers\User\PeminjamanController::class, 'destroy'])->name('destroy');
+            
+            // ✅ ROUTE UNTUK HAPUS PERMANEN (selesai/ditolak/batal)
+            Route::delete('/{id}/force', [App\Http\Controllers\User\PeminjamanController::class, 'forceDelete'])->name('force-delete');
+            
+            Route::post('/{id}/take', [App\Http\Controllers\User\PeminjamanController::class, 'takeItem'])->name('take');
         });
 
+        Route::prefix('pengembalian')->name('pengembalian.')->group(function () {
+            Route::get('/', [App\Http\Controllers\User\PengembalianController::class, 'index'])->name('index');
+            Route::get('/create/{peminjaman_id?}', [App\Http\Controllers\User\PengembalianController::class, 'create'])->name('create');
+            Route::post('/{peminjaman}', [App\Http\Controllers\User\PengembalianController::class, 'store'])->name('store');
+            Route::get('/{id}', [App\Http\Controllers\User\PengembalianController::class, 'show'])->name('show');
+        });
+
+        Route::get('/riwayat', [App\Http\Controllers\User\RiwayatController::class, 'index'])->name('history');
+
+    });
     /*
     |--------------------------------------------------------------------------
     | PROFILE

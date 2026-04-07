@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-chart-bar')
 @section('header-title', 'Laporan Peminjaman')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/petugas.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <div class="row mb-4 g-3">
@@ -279,22 +283,4 @@ function exportToExcel() {
     XLSX.writeFile(workbook, filename);
 }
 </script>
-
-<style>
-.card {
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-.table th {
-    font-weight: 600;
-    background-color: #f8fafc;
-}
-.badge {
-    font-weight: 500;
-    padding: 5px 10px;
-}
-.btn-group-sm .btn {
-    padding: 0.25rem 0.5rem;
-}
-</style>
 @endsection

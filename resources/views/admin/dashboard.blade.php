@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-tachometer-alt')
 @section('header-title', 'Dashboard Admin')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <!-- ====================== STATISTIK UTAMA ====================== -->
@@ -354,72 +358,5 @@
     });
 </script>
 
-<style>
-    .stats-card {
-        background: white;
-        border-radius: 12px;
-        padding: 25px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        height: 100%;
-        transition: transform 0.3s ease;
-        border: none;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-    }
-    
-    .stats-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-bottom: 20px;
-    }
-    
-    .stats-number {
-        font-size: 32px;
-        font-weight: 700;
-        margin: 10px 0;
-        color: #2c3e50;
-    }
-    
-    .stats-label {
-        color: #6c757d;
-        font-size: 14px;
-        margin-bottom: 10px;
-    }
-    
-    .stats-trend {
-        font-size: 13px;
-    }
-    
-    .rounded-circle.bg-opacity-10 {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .rounded-circle.bg-opacity-10 i {
-        font-size: 20px;
-    }
-    
-    @media (max-width: 768px) {
-        .stats-number {
-            font-size: 24px;
-        }
-        
-        .stats-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
-        }
-    }
-</style>
+
 @endpush

@@ -1,10 +1,12 @@
-{{-- resources/views/user/peminjaman/index.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Riwayat Peminjaman Saya')
 @section('header-icon', 'fas fa-hand-holding')
 @section('header-title', 'Riwayat Peminjaman Saya')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/user-peeminjaman.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <!-- STATISTIK PEMINJAMAN USER -->
@@ -73,7 +75,7 @@
                     <i class="fas fa-list text-primary me-2"></i>
                     Daftar Peminjaman Saya
                 </h5>
-                <a href="{{ route('user.peminjaman.create') }}" class="btn btn-primary btn-sm">
+                <a href="{{ route('user.alat') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i> Pinjam Baru
                 </a>
             </div>
@@ -197,8 +199,8 @@
                                         </button>
                                     @endif
                                     
-                                    {{-- Tombol Hapus (jika status batal atau ditolak) --}}
-                                    @if(in_array($item->status, ['batal', 'ditolak']))
+                                    {{-- Tombol Hapus (jika status selesai, ditolak, atau batal) --}}
+                                    @if(in_array($item->status, ['selesai', 'ditolak', 'batal']))
                                         <button type="button" 
                                                 class="btn btn-outline-danger" 
                                                 title="Hapus Riwayat"
@@ -256,11 +258,51 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Hapus Riwayat (untuk status selesai, ditolak, batal)
+function deleteHistory(id) {
+    console.log('deleteHistory dipanggil dengan ID:', id);
+    
+    Swal.fire({
+        title: 'Hapus Riwayat?',
+        text: 'Data yang dihapus tidak dapat dikembalikan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/user/peminjaman/' + id + '/force',
+                type: 'DELETE',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: response.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                },
+                error: function(xhr) {
+                    Swal.fire('Gagal!', xhr.responseJSON?.message || 'Terjadi kesalahan', 'error');
+                }
+            });
+        }
+    });
+}
+
 // Konfirmasi Pengambilan Laptop
-window.confirmTake = function(id) {
+function confirmTake(id) {
     Swal.fire({
         title: 'Konfirmasi Pengambilan',
         text: 'Apakah Anda sudah menerima laptop yang dipinjam?',
@@ -273,7 +315,7 @@ window.confirmTake = function(id) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
-                url: `/user/peminjaman/${id}/take`,
+                url: '/user/peminjaman/' + id + '/take',
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
@@ -296,10 +338,10 @@ window.confirmTake = function(id) {
             });
         }
     });
-};
+}
 
 // Batalkan Peminjaman (oleh user)
-window.cancelBorrowing = function(id) {
+function cancelBorrowing(id) {
     Swal.fire({
         title: 'Batalkan Peminjaman?',
         text: 'Apakah Anda yakin ingin membatalkan peminjaman ini?',
@@ -312,7 +354,7 @@ window.cancelBorrowing = function(id) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
-                url: `/user/peminjaman/${id}`,
+                url: '/user/peminjaman/' + id,
                 type: 'DELETE',
                 data: {
                     _token: '{{ csrf_token() }}'
@@ -334,49 +376,11 @@ window.cancelBorrowing = function(id) {
             });
         }
     });
-};
-
-// Hapus Riwayat
-window.deleteHistory = function(id) {
-    Swal.fire({
-        title: 'Hapus Riwayat?',
-        text: 'Data yang dihapus tidak dapat dikembalikan!',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: `/user/peminjaman/${id}/force`,
-                type: 'DELETE',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: response.message,
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        location.reload();
-                    });
-                },
-                error: function(xhr) {
-                    Swal.fire('Gagal!', xhr.responseJSON?.message || 'Terjadi kesalahan', 'error');
-                }
-            });
-        }
-    });
-};
+}
 
 // Auto dismiss alert
 setTimeout(() => {
     $('.alert-dismissible').alert('close');
 }, 5000);
 </script>
-@endsection
+@endpush

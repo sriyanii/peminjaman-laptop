@@ -4,6 +4,10 @@
 @section('header-icon', 'fas fa-users-cog')
 @section('header-title', 'Manajemen User')
 
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+@endpush
 @section('content')
 <div class="container-fluid px-0">
     <!-- ====================== STATISTIK ====================== -->
@@ -232,26 +236,5 @@
     }
 </script>
 
-<style>
-    .avatar-circle-sm {
-        width: 32px;
-        height: 32px;
-        background: #3a86ff;
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-    }
-    
-    .form-check-input:checked {
-        background-color: #10b981;
-        border-color: #10b981;
-    }
-    
-    .btn-group-sm .btn {
-        padding: 0.25rem 0.5rem;
-    }
-</style>
+
 @endsection

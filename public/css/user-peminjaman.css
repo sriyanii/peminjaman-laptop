@@ -1,0 +1,362 @@
+
+    .card {
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .badge {
+        font-weight: 500;
+        padding: 5px 10px;
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-clicked {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+
+    .card {
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .alert {
+        border-radius: 8px;
+    }
+    .form-label {
+        font-weight: 500;
+    }
+    .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+    }
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #strukContent, #strukContent * {
+        visibility: visible;
+    }
+    #strukContent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 20px;
+        background: white;
+    }
+    .modal-footer {
+        display: none !important;
+    }
+    .btn-close {
+        display: none !important;
+    }
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: 1px solid #eef2f7;
+}
+
+.badge {
+    font-weight: 500;
+    padding: 5px 10px;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.card.border-danger {
+    border-left: 4px solid #dc3545 !important;
+}
+
+.card.border-primary {
+    border-left: 4px solid #0d6efd !important;
+}
+
+/* Style untuk struk */
+#strukContent {
+    font-family: 'Courier New', monospace;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+#strukContent .table {
+    font-size: 14px;
+}
+
+#strukContent hr {
+    border-top: 2px dashed #333;
+}
+
+#strukContent .badge {
+    font-size: 12px;
+}
+
+    /* Modern Typography */
+    body {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    
+    /* Video Styles */
+    .video-wrapper {
+        position: relative;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .video-player {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.95;
+    }
+    
+    .sound-badge {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 6px 14px;
+        border-radius: 50px;
+        font-size: 13px;
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255,255,255,0.2);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    /* Stat Cards - Modern Minimalis */
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        border: 1px solid rgba(0,0,0,0.03);
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        transition: all 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        border-color: transparent;
+    }
+    
+    .stat-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    
+    .stat-icon-primary {
+        background: rgba(13, 110, 253, 0.08);
+        color: #0d6efd;
+    }
+    
+    .stat-icon-warning {
+        background: rgba(255, 193, 7, 0.08);
+        color: #ffc107;
+    }
+    
+    .stat-icon-success {
+        background: rgba(25, 135, 84, 0.08);
+        color: #198754;
+    }
+    
+    .stat-icon-info {
+        background: rgba(13, 202, 240, 0.08);
+        color: #0dcaf0;
+    }
+    
+    .stat-content {
+        flex: 1;
+    }
+    
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 4px;
+        color: #1a1a1a;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    /* Action Cards - Modern */
+    .action-card {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        background: white;
+        border-radius: 14px;
+        text-decoration: none;
+        border: 1px solid rgba(0,0,0,0.03);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        transition: all 0.2s ease;
+        gap: 15px;
+    }
+    
+    .action-card:hover {
+        transform: translateX(5px);
+        border-color: transparent;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+    }
+    
+    .action-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+    
+    .action-card-primary .action-icon {
+        background: rgba(13, 110, 253, 0.08);
+        color: #0d6efd;
+    }
+    
+    .action-card-warning .action-icon {
+        background: rgba(255, 193, 7, 0.08);
+        color: #ffc107;
+    }
+    
+    .action-card-success .action-icon {
+        background: rgba(25, 135, 84, 0.08);
+        color: #198754;
+    }
+    
+    .action-card-info .action-icon {
+        background: rgba(13, 202, 240, 0.08);
+        color: #0dcaf0;
+    }
+    
+    .action-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .action-title {
+        color: #1a1a1a;
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 3px;
+    }
+    
+    .action-desc {
+        color: #8f9bb3;
+        font-size: 12px;
+    }
+    
+    .action-arrow {
+        color: #cbd5e0;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+    
+    .action-card:hover .action-arrow {
+        color: #0d6efd;
+        transform: translateX(3px);
+    }
+    
+    /* Section Title */
+    .section-title {
+        padding-left: 4px;
+    }
+    
+    /* Table Styles */
+    .table thead th {
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        padding: 15px 12px;
+    }
+    
+    .table tbody td {
+        padding: 15px 12px;
+        color: #2d3e50;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(0,0,0,0.03);
+    }
+    
+    .badge.bg-opacity-10 {
+        font-weight: 500;
+        font-size: 12px;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+    
+    /* Card */
+    .card {
+        border-radius: 20px;
+    }
+    
+    /* Button */
+    .btn-light {
+        background: #f8fafd;
+        border: none;
+        color: #4a5b6e;
+    }
+    
+    .btn-light:hover {
+        background: #e9ecef;
+        color: #0d6efd;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .stat-card {
+            padding: 16px;
+        }
+        
+        .action-card {
+            padding: 16px;
+        }
+        
+        .video-wrapper {
+            height: 160px !important;
+        }
+    }
