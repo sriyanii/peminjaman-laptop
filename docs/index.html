@@ -5,359 +5,328 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Sistem Peminjaman Laptop</title>
     
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Open Sans', sans-serif;
         }
 
         body {
             min-height: 100vh;
-            background-image: url('login.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', sans-serif;
         }
 
-        .login-container {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            padding: 30px 35px;
-            width: 360px;
-            background-color: rgba(255, 255, 255, 0.07);
-            backdrop-filter: blur(5px);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        /* Login Container */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .login-header {
             text-align: center;
-            color: white;
-            margin-bottom: 35px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid #3498db;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 28px;
-            font-weight: 600;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
         }
 
-        .login-subtitle {
-            text-align: center;
-            color: white;
-            margin-bottom: 25px;
+        .login-header i {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .login-header p {
+            color: #666;
             font-size: 14px;
-            font-weight: 400;
-            opacity: 0.95;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .form-label {
-            display: block;
-            color: white;
-            margin-bottom: 8px;
-            font-size: 14px;
             font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
         }
 
-        .form-input {
-            width: 100%;
+        .input-group {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-group-text {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-right: none;
+        }
+
+        .form-control {
+            border: 1px solid #e0e0e0;
+            border-left: none;
             padding: 12px 15px;
-            border: none;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-bottom: 2px solid #3498db;
-            color: white;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            border-radius: 4px;
-        }
-
-        .form-input:focus {
-            background-color: rgba(255, 255, 255, 0.15);
-            border-bottom: 2px solid #64b5f6;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-
-        .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
             font-size: 14px;
         }
 
-        .login-button {
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #667eea;
+        }
+
+        .form-control:focus + .input-group-text {
+            border-color: #667eea;
+        }
+
+        .btn-login {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
-            background-color: #3498db;
-            font-size: 16px;
             color: white;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
             font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-top: 10px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .login-button:hover {
-            background-color: #2980b9;
+        .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .login-button:active {
+        .btn-login:active {
             transform: translateY(0);
         }
 
         .login-links {
             text-align: center;
-            color: white;
-            font-size: 14px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
         }
 
         .login-links a {
-            color: white;
+            color: #667eea;
             text-decoration: none;
-            transition: color 0.3s ease;
-            font-weight: 500;
-            opacity: 0.9;
+            font-size: 14px;
         }
 
         .login-links a:hover {
-            color: #3498db;
             text-decoration: underline;
-            opacity: 1;
         }
 
-        .error-message {
-            color: #ff6b6b;
-            font-size: 12px;
-            margin-top: 5px;
-            background: rgba(255, 107, 107, 0.15);
-            padding: 5px 10px;
-            border-radius: 4px;
-            border-left: 3px solid #ff6b6b;
-        }
-
-        .success-message {
-            color: white;
-            font-size: 14px;
-            text-align: center;
-            background: rgba(46, 204, 113, 0.8);
-            padding: 12px;
-            border-radius: 5px;
+        .alert {
+            border-radius: 10px;
             margin-bottom: 20px;
-            border-left: 3px solid #2ecc71;
-            backdrop-filter: blur(5px);
-            font-weight: 500;
         }
 
         @media (max-width: 480px) {
-            .login-container {
-                width: 90%;
-                padding: 25px 20px;
+            .login-card {
+                padding: 30px 20px;
             }
             
-            .login-header {
+            .login-header h1 {
                 font-size: 24px;
-            }
-            
-            .login-subtitle {
-                font-size: 13px;
             }
         }
     </style>
-
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
-<div class="login-container">
-    <h1 class="login-header">LOGIN</h1>
-    
-    <p class="login-subtitle">Sistem Peminjaman Laptop</p>
-    
-    <!-- Demo alert (untuk tampilan) -->
-    <div id="demoAlert" class="success-message" style="display: none;">
-        Demo Mode - Koneksi ke backend tidak tersedia
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-header">
+                <i class="fas fa-laptop"></i>
+                <h1>Sistem Peminjaman Laptop</h1>
+                <p>Silakan login untuk melanjutkan</p>
+            </div>
+            
+            <!-- Alert Demo -->
+            <div id="demoAlert" class="alert alert-info" style="display: none;">
+                <i class="fas fa-info-circle me-2"></i>
+                <span id="alertMessage"></span>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-envelope me-2"></i>Email
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" id="email" 
+                               placeholder="admin@example.com" required>
+                    </div>
+                    <div id="emailError" class="text-danger small mt-1" style="display: none;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-lock me-2"></i>Password
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="form-control" id="password" 
+                               placeholder="••••••••" required>
+                    </div>
+                    <div id="passwordError" class="text-danger small mt-1" style="display: none;"></div>
+                </div>
+                
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                </button>
+            </form>
+            
+            <div class="login-links">
+                <a href="#" id="forgotLink">
+                    <i class="fas fa-question-circle me-1"></i>Lupa Password?
+                </a>
+                <span class="mx-2 text-muted">|</span>
+                <a href="#" id="registerLink">
+                    <i class="fas fa-user-plus me-1"></i>Daftar Akun Baru
+                </a>
+            </div>
+            
+            <!-- Demo credentials info -->
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> Demo: admin@example.com / admin123
+                </small>
+            </div>
+        </div>
     </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <form id="loginForm">
-        <div class="form-group">
-            <label for="email" class="form-label">Email</label>
-            <input 
-                id="email" 
-                type="email" 
-                class="form-input" 
-                name="email" 
-                required 
-                autofocus
-                placeholder="email@example.com"
-            >
-            <div id="emailError" class="error-message" style="display: none;"></div>
-        </div>
+    <script>
+        // Demo credentials
+        const demoCredentials = {
+            email: 'admin@example.com',
+            password: 'admin123'
+        };
         
-        <div class="form-group">
-            <label for="password" class="form-label">Password</label>
-            <input 
-                id="password" 
-                type="password" 
-                class="form-input" 
-                name="password" 
-                required 
-                placeholder="••••••••"
-            >
-            <div id="passwordError" class="error-message" style="display: none;"></div>
-        </div>
+        // Get elements
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+        const demoAlert = document.getElementById('demoAlert');
+        const alertMessage = document.getElementById('alertMessage');
         
-        <button type="submit" class="login-button" id="loginButton">
-            Login
-        </button>
-    </form>
-    
-    <div class="login-links">
-        <a href="#" id="forgotPassword">Lupa Password?</a>
-        <div style="margin-top: 10px;">
-            <span style="color: rgba(255, 255, 255, 0.9);">Belum punya akun? </span>
-            <a href="#" id="registerLink">Daftar di sini</a>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Demo credentials (hanya untuk contoh)
-    const demoCredentials = {
-        email: 'admin@example.com',
-        password: 'admin123'
-    };
-
-    // Get DOM elements
-    const form = document.getElementById('loginForm');
-    const loginButton = document.getElementById('loginButton');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const emailError = document.getElementById('emailError');
-    const passwordError = document.getElementById('passwordError');
-    const demoAlert = document.getElementById('demoAlert');
-
-    // Focus effect for inputs
-    document.querySelectorAll('.form-input').forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.borderBottom = '2px solid #64b5f6';
-            this.style.boxShadow = '0 2px 5px rgba(100, 181, 246, 0.3)';
-        });
-        
-        input.addEventListener('blur', function() {
-            this.style.borderBottom = '2px solid #3498db';
-            this.style.boxShadow = 'none';
-        });
-    });
-
-    // Handle form submission
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Reset errors
-        emailError.style.display = 'none';
-        passwordError.style.display = 'none';
-        
-        let hasError = false;
-        
-        // Validate email
-        if (!emailInput.value) {
-            emailError.textContent = 'Email wajib diisi!';
-            emailError.style.display = 'block';
-            hasError = true;
-        } else if (!emailInput.value.includes('@')) {
-            emailError.textContent = 'Masukkan email yang valid!';
-            emailError.style.display = 'block';
-            hasError = true;
+        // Show alert function
+        function showAlert(message, type = 'info') {
+            demoAlert.className = `alert alert-${type}`;
+            alertMessage.innerHTML = message;
+            demoAlert.style.display = 'block';
+            
+            setTimeout(() => {
+                demoAlert.style.display = 'none';
+            }, 3000);
         }
         
-        // Validate password
-        if (!passwordInput.value) {
-            passwordError.textContent = 'Password wajib diisi!';
-            passwordError.style.display = 'block';
-            hasError = true;
-        }
-        
-        if (hasError) return;
-        
-        // Show loading state
-        loginButton.innerHTML = 'Loading...';
-        loginButton.disabled = true;
-        loginButton.style.opacity = '0.8';
-        loginButton.style.background = '#2980b9';
-        
-        // Simulate login process (demo)
-        setTimeout(() => {
-            if (emailInput.value === demoCredentials.email && passwordInput.value === demoCredentials.password) {
-                // Success - redirect ke dashboard
-                demoAlert.style.display = 'block';
-                demoAlert.textContent = 'Login berhasil! Mengarahkan ke dashboard...';
-                demoAlert.style.background = 'rgba(46, 204, 113, 0.9)';
-                
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 1500);
-            } else {
-                // Failed
-                demoAlert.style.display = 'block';
-                demoAlert.textContent = 'Login gagal! Email atau password salah.';
-                demoAlert.style.background = 'rgba(231, 76, 60, 0.9)';
-                
-                // Reset button
-                loginButton.innerHTML = 'Login';
-                loginButton.disabled = false;
-                loginButton.style.opacity = '1';
-                loginButton.style.background = '#3498db';
-                
-                // Hide alert after 3 seconds
-                setTimeout(() => {
-                    demoAlert.style.display = 'none';
-                }, 3000);
+        // Form submit
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Reset errors
+            emailError.style.display = 'none';
+            passwordError.style.display = 'none';
+            
+            let hasError = false;
+            
+            // Validate email
+            if (!emailInput.value) {
+                emailError.textContent = 'Email wajib diisi!';
+                emailError.style.display = 'block';
+                hasError = true;
+            } else if (!emailInput.value.includes('@')) {
+                emailError.textContent = 'Masukkan email yang valid!';
+                emailError.style.display = 'block';
+                hasError = true;
             }
-        }, 1000);
-    });
-    
-    // Forgot password link
-    document.getElementById('forgotPassword').addEventListener('click', function(e) {
-        e.preventDefault();
-        demoAlert.style.display = 'block';
-        demoAlert.textContent = 'Fitur reset password: Hubungi admin untuk reset password.';
-        demoAlert.style.background = 'rgba(52, 152, 219, 0.9)';
+            
+            // Validate password
+            if (!passwordInput.value) {
+                passwordError.textContent = 'Password wajib diisi!';
+                passwordError.style.display = 'block';
+                hasError = true;
+            }
+            
+            if (hasError) return;
+            
+            // Loading state
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+            
+            // Simulate login
+            setTimeout(() => {
+                if (emailInput.value === demoCredentials.email && passwordInput.value === demoCredentials.password) {
+                    showAlert('Login berhasil! Selamat datang.', 'success');
+                    
+                    // Redirect ke dashboard (buat file dashboard.html)
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
+                } else {
+                    showAlert('Login gagal! Email atau password salah.', 'danger');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt me-2"></i>Login';
+                }
+            }, 1000);
+        });
         
-        setTimeout(() => {
-            demoAlert.style.display = 'none';
-        }, 3000);
-    });
-    
-    // Register link
-    document.getElementById('registerLink').addEventListener('click', function(e) {
-        e.preventDefault();
-        demoAlert.style.display = 'block';
-        demoAlert.textContent = 'Fitur registrasi: Hubungi admin untuk membuat akun baru.';
-        demoAlert.style.background = 'rgba(52, 152, 219, 0.9)';
+        // Forgot password
+        document.getElementById('forgotLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showAlert('Fitur reset password: Hubungi admin untuk reset password.', 'info');
+        });
         
-        setTimeout(() => {
-            demoAlert.style.display = 'none';
-        }, 3000);
-    });
-</script>
-
+        // Register link
+        document.getElementById('registerLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showAlert('Fitur registrasi: Hubungi admin untuk membuat akun baru.', 'info');
+        });
+    </script>
 </body>
 </html>
