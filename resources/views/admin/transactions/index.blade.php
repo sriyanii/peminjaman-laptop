@@ -356,20 +356,15 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="exportModalLabel">
-                    <i class="fas fa-file-export me-2"></i>Export Data Transaksi
+                    <i class="fas fa-file-pdf me-2"></i>Export Data Transaksi ke PDF
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ route('admin.transactions.export') }}" method="POST">
                 @csrf
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Format Export</label>
-                        <select class="form-select" name="format" required>
-                            <option value="excel">Excel (.xlsx)</option>
-                            <option value="pdf">PDF (.pdf)</option>
-                        </select>
-                    </div>
+                    <!-- Hidden input untuk format PDF -->
+                    <input type="hidden" name="format" value="pdf">
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -397,8 +392,8 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times me-2"></i>Batal
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-download me-2"></i>Download
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-file-pdf me-2"></i>Export PDF
                     </button>
                 </div>
             </form>
