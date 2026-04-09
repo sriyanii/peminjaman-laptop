@@ -4,10 +4,10 @@
 @section('header-icon', 'fas fa-users-cog')
 @section('header-title', 'Manajemen User')
 
-
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 @endpush
+
 @section('content')
 <div class="container-fluid px-0">
     <!-- ====================== STATISTIK ====================== -->
@@ -135,6 +135,15 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
+                                
+                                <!-- Form Delete (Hidden) - WAJIB ADA UNTUK HAPUS -->
+                                <form id="delete-form-{{ $user->id }}" 
+                                      action="{{ route('admin.users.destroy', $user) }}" 
+                                      method="POST" 
+                                      style="display: none;">
+                                    @csrf
+                                    @method('DELETE')
+                                </form>
                             </td>
                         </tr>
                         @empty
@@ -165,7 +174,8 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Toggle user status
     document.querySelectorAll('.toggle-status').forEach(checkbox => {
@@ -197,7 +207,7 @@
         });
     });
 
-    // Confirm delete
+    // Confirm delete with SweetAlert
     function confirmDelete(userId) {
         Swal.fire({
             title: 'Apakah Anda yakin?',
@@ -224,8 +234,8 @@
             timer: 3000,
             timerProgressBar: true,
             didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
             }
         });
         
@@ -235,6 +245,4 @@
         });
     }
 </script>
-
-
-@endsection
+@endpush
